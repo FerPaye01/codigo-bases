@@ -70,6 +70,12 @@ class SIGEDAdapter:
 async def lifespan(app: FastAPI):
     # Inicializar la base de datos relacional local en el arranque (RNF-4)
     database.init_db()
+    # Inicializar la base de datos vectorial Qdrant local
+    try:
+        import qdrant_service
+        qdrant_service.init_qdrant()
+    except Exception as e:
+        print(f"Error al inicializar Qdrant en lifespan: {e}")
     yield
 
 # Inicializar la aplicación FastAPI
@@ -100,6 +106,23 @@ class GenerateRequest(BaseModel):
 
 class GenerateResponse(BaseModel):
     response: str = Field(..., description="La respuesta textual generada por el modelo")
+
+# Esquemas para Recomendaciones Vectoriales con Qdrant (RAG)
+class RecommendRequest(BaseModel):
+    text: str = Field(..., description="Texto de consulta para buscar similitudes en Qdrant")
+    categoria: Optional[str] = Field(None, description="Categoría opcional (Bienes, Servicios, Consultoría) para filtrar")
+    limit: Optional[int] = Field(3, description="Límite máximo de sugerencias a retornar")
+
+class ClauseRecommendation(BaseModel):
+    texto: str
+    categoria: str
+    tipo_clausula: str
+    fuente: str
+    score: float
+
+class RecommendResponse(BaseModel):
+    success: bool
+    recommendations: List[ClauseRecommendation]
 
 # Esquema enriquecido para estructurar la extracción del TDR conforme a los requisitos (RF-3)
 class TDRExtractedData(BaseModel):
@@ -347,4 +370,34 @@ async def generate_docx(request: DocxGenerationRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Error al generar el documento de Bases Word: {str(e)}"
+        )
+
+@app.post("/recommend_clauses", response_model=RecommendResponse)
+def recommend_clauses(request: RecommendRequest):
+    """
+    Endpoint para buscar cláusulas y normas estándar similares en Qdrant (RAG).
+    Permite filtrar por categoría del procedimiento (Bienes, Servicios, Consultoría).
+    """
+    try:
+        import qdrant_service
+        results = qdrant_service.query_similar_clauses(
+            query_text=request.text,
+            category_filter=request.categoria,
+            limit=request.limit
+        )
+        recommendations = [
+            ClauseRecommendation(
+                texto=r["texto"],
+                categoria=r["categoria"],
+                tipo_clausula=r["tipo_clausula"],
+                fuente=r["fuente"],
+                score=r["score"]
+            )
+            for r in results
+        ]
+        return RecommendResponse(success=True, recommendations=recommendations)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error al consultar recomendaciones en la Vector DB Qdrant: {str(e)}"
         )

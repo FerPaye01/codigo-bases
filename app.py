@@ -803,6 +803,44 @@ elif st.session_state.current_step == 3:
             • Factores: <span class="confidence-badge conf-red">Rojo</span>
             """, unsafe_allow_html=True)
             
+        # RAG / Qdrant Clause Recommendations (Local Vector Search)
+        st.markdown("<hr style='border-color: #cbd5e1; margin: 15px 0;'>", unsafe_allow_html=True)
+        with st.expander("💡 **Asistente de Recomendaciones Normativas (RAG Qdrant)**", expanded=False):
+            st.markdown("<small>Busque cláusulas recomendadas de las directivas OSCE y bases estándar basadas en el TDR:</small>", unsafe_allow_html=True)
+            
+            default_query = st.session_state.datos_tecnicos.get("objeto", "")
+            rag_query = st.text_input("Palabras clave de consulta:", value=default_query)
+            
+            if st.button("Consultar Base de Conocimiento", use_container_width=True):
+                if not rag_query:
+                    st.warning("Ingrese un término de búsqueda.")
+                else:
+                    with st.spinner("Buscando en la base vectorial Qdrant..."):
+                        try:
+                            payload = {
+                                "text": rag_query,
+                                "categoria": st.session_state.plantilla_final,
+                                "limit": 3
+                            }
+                            resp = requests.post("http://127.0.0.1:8000/recommend_clauses", json=payload, timeout=15)
+                            if resp.status_code == 200:
+                                recommendations = resp.json().get("recommendations", [])
+                                if not recommendations:
+                                    st.info("No se encontraron cláusulas similares para este criterio.")
+                                else:
+                                    for idx, rec in enumerate(recommendations):
+                                        st.markdown(f"""
+                                        <div style="background-color: #f0fdf4; border-left: 3px solid #16a34a; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+                                            <b style="color: #14532d;">Sugerencia #{idx+1}: {rec['tipo_clausula']}</b><br>
+                                            <span style="font-size: 0.85rem; color: #1e293b;">{rec['texto']}</span><br>
+                                            <small style="color: #64748b;">Fuente: {rec['fuente']} | Relevancia: {rec['score']:.2%}</small>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                            else:
+                                st.error(f"Error al conectar con la base de vectores: {resp.text}")
+                        except Exception as ex:
+                            st.error(f"No se pudo contactar al API de vectores: {ex}")
+            
         st.markdown("<br>", unsafe_allow_html=True)
         
         # Botones de control del paso
