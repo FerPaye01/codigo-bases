@@ -2,6 +2,61 @@ import streamlit as st
 import pandas as pd
 import datetime
 import time
+import requests
+import database
+
+# Inicializar Base de Datos SQLite en arranque
+database.init_db()
+
+# MOCK TDRs para la simulación del API de SIGED (RF-1, RF-3)
+MOCK_TDRS = {
+    "20260000982": """TÉRMINOS DE REFERENCIA (TDR)
+CONTRATACIÓN DE SERVICIO DE CONSULTORÍA
+CÓDIGO INTERNO: TDR-GSTI-2026-004
+
+1. OBJETO DE LA CONTRATACIÓN
+Contratar un servicio de consultoría especializada para el diagnóstico, gestión y mitigación de riesgos de seguridad de la información e infraestructura de red de Osinergmin.
+
+2. PLAZO DE EJECUCIÓN
+El plazo estimado para la ejecución de las prestaciones del servicio es de 180 días calendario contados a partir del día siguiente de la firma del contrato.
+
+3. SISTEMA DE CONTRATACIÓN
+El presente proceso de selección se regirá por el sistema de Suma Alzada.
+
+4. REQUERIMIENTO COMPLETO Y ENTREGABLES
+- Entregable 1: Diagnóstico situacional de seguridad de red.
+- Entregable 2: Arquitectura de seguridad lógica y física sugerida.
+- Entregable 3: Matriz de riesgos informáticos de Osinergmin.
+- Entregable 4: Plan de contingencias y recuperación ante desastres corporativo.
+
+5. REQUISITOS DE CALIFICACIÓN
+- Facturación acumulada de la empresa consultora equivalente a 2 veces el valor estimado en consultorías similares durante los últimos 5 años.
+- Certificación ISO 27001 e ISO 9001 vigente.
+- Jefe de Proyecto: Ingeniero con certificación PMP y CISM (Certified Information Security Manager).
+
+6. PENALIDADES
+Por retraso en la entrega de informes del servicio se aplicará una penalidad de 0.20%.""",
+    "20260000411": """TÉRMINOS DE REFERENCIA (TDR)
+ADQUISICIÓN DE SERVIDORES DE ALTA DISPONIBILIDAD
+CÓDIGO INTERNO: TDR-GSTI-2026-011
+
+1. OBJETO DE LA CONTRATACIÓN
+Adquisición de 4 servidores físicos de alta disponibilidad incluyendo licenciamiento y soporte por 3 años para el Data Center de Osinergmin.
+
+2. PLAZO DE EJECUCIÓN
+El plazo de entrega de los servidores físicos instalados y configurados será de 60 días calendario.
+
+3. SISTEMA DE CONTRATACIÓN
+El presente proceso de selección se regirá por el sistema de Suma Alzada.
+
+4. REQUERIMIENTO COMPLETO
+Servidores físicos de 64 núcleos, 512GB RAM y almacenamiento SSD enterprise en configuración cluster.
+
+5. REQUISITOS DE CALIFICACIÓN
+- Experiencia de la empresa en la provisión de servidores y almacenamiento empresarial durante los últimos 3 años.
+- Soporte técnico local certificado directamente por el fabricante del hardware de los servidores."""
+}
+
 
 # ==============================================================================
 # CONFIGURACIÓN DE PÁGINA Y ESTILOS
@@ -194,7 +249,7 @@ if "current_step" not in st.session_state:
 if "historial_expedientes" not in st.session_state:
     st.session_state.historial_expedientes = [
         {
-            "expediente": "EXP-SIGED-2026-00982",
+            "expediente": "20260000982",
             "plantilla": "Servicios - Normal",
             "creacion": "10/06/2026",
             "modificacion": "12/06/2026",
@@ -202,7 +257,7 @@ if "historial_expedientes" not in st.session_state:
             "estado": "Borrador generado"
         },
         {
-            "expediente": "EXP-SIGED-2026-00411",
+            "expediente": "20260000411",
             "plantilla": "Bienes - Normal",
             "creacion": "05/06/2026",
             "modificacion": "05/06/2026",
@@ -210,7 +265,7 @@ if "historial_expedientes" not in st.session_state:
             "estado": "Descargado"
         },
         {
-            "expediente": "EXP-SIGED-2026-01053",
+            "expediente": "20260001053",
             "plantilla": "Consultoría - Abreviado",
             "creacion": "12/06/2026",
             "modificacion": "12/06/2026",
@@ -228,6 +283,8 @@ if "expediente_error" not in st.session_state:
     st.session_state.expediente_error = ""
 if "expediente_data" not in st.session_state:
     st.session_state.expediente_data = None
+if "tdr_nombre" not in st.session_state:
+    st.session_state.tdr_nombre = ""
 
 # Plantilla de bases seleccionada
 if "plantilla_sugerida" not in st.session_state:
@@ -341,9 +398,9 @@ if st.session_state.current_step == 1:
     with col_e1:
         st.markdown("#### Búsqueda en SIGED")
         expediente_input = st.text_input(
-            "Número de expediente SIGED:", 
+            "Número de expediente SIGED (11 dígitos):", 
             value=st.session_state.expediente_input, 
-            placeholder="Ingrese e.g. EXP-SIGED-2026-00982"
+            placeholder="Ingrese e.g. 20260000982"
         )
         
         col_btn1, col_btn2 = st.columns([1, 1])
@@ -358,73 +415,239 @@ if st.session_state.current_step == 1:
             st.session_state.expediente_error = ""
             st.session_state.expediente_data = None
             st.session_state.bases_generadas = False
+            if "tdr_markdown_extraido" in st.session_state:
+                st.session_state.tdr_markdown_extraido = ""
             st.rerun()
+            
+        st.markdown("<hr style='border-color: #cbd5e1; margin: 15px 0;'>", unsafe_allow_html=True)
+        st.markdown("#### 📂 O Procesar Documento Local (Layout OCR)")
+        st.caption("Cargue su archivo PDF, Word o imagen del TDR para procesarlo localmente con IBM Docling:")
+        tdr_file = st.file_uploader(
+            "Subir archivo TDR:",
+            type=["pdf", "docx", "png", "jpg", "jpeg"]
+        )
+        btn_procesar_file = st.button("🚀 Iniciar Extracción Local con Docling", type="primary", use_container_width=True)
+        
+        if btn_procesar_file:
+            if not tdr_file:
+                st.error("Por favor, cargue un archivo primero.")
+            else:
+                virt_expediente = f"2026{int(time.time()) % 10000000:07d}"
+                st.session_state.expediente_input = virt_expediente
+                
+                log_placeholder = st.empty()
+                with log_placeholder.container():
+                    st.markdown(f'<div class="aws-panel">👤 <b>[Paso 1]</b> Archivo local recibido: {tdr_file.name}</div>', unsafe_allow_html=True)
+                    time.sleep(0.5)
+                    st.markdown('<div class="aws-panel">📄 <b>[Paso 2-3]</b> Iniciando motor IBM Docling para análisis de layout y OCR...</div>', unsafe_allow_html=True)
+                    
+                    # Llamar al API FastAPI /extract_file
+                    ext_success = False
+                    try:
+                        files = {"file": (tdr_file.name, tdr_file.getvalue(), tdr_file.type)}
+                        api_resp = requests.post(
+                            "http://127.0.0.1:8000/extract_file",
+                            files=files,
+                            timeout=600 # Timeout amplio para CPU OCR
+                        )
+                        if api_resp.status_code == 200:
+                            api_data = api_resp.json()
+                            ext_data = api_data["data"]
+                            st.session_state.tdr_markdown_extraido = api_data.get("raw_response", "")
+                            ext_success = True
+                        else:
+                            st.error(f"Error en el backend de extracción (Código {api_resp.status_code}): {api_resp.text}")
+                    except Exception as ex:
+                        st.error(f"No se pudo conectar con el backend en http://127.0.0.1:8000: {ex}")
+                        
+                log_placeholder.empty()
+                
+                if ext_success:
+                    st.session_state.expediente_valido = True
+                    st.session_state.expediente_error = ""
+                    
+                    st.session_state.expediente_data = {
+                        "numero": virt_expediente,
+                        "asunto": f"Extracción local: {tdr_file.name}",
+                        "tdr": tdr_file.name,
+                        "fecha": datetime.date.today().strftime('%d/%m/%Y')
+                    }
+                    st.session_state.tdr_nombre = tdr_file.name
+                    
+                    objeto_str = ext_data.get("objeto", "").lower()
+                    if "bien" in objeto_str or "adquisición" in objeto_str or "compra" in objeto_str:
+                        st.session_state.plantilla_sugerida = "Bienes - Normal"
+                    elif "consult" in objeto_str or "diagnóstico" in objeto_str or "asesoría" in objeto_str:
+                        st.session_state.plantilla_sugerida = "Consultoría - Normal"
+                    else:
+                        st.session_state.plantilla_sugerida = "Servicios - Normal"
+                        
+                    st.session_state.plantilla_final = st.session_state.plantilla_sugerida
+                    st.session_state.nomenclatura = f"AS-{virt_expediente[-3:]}-2026-OSINERGMIN"
+                    
+                    st.session_state.datos_tecnicos = {
+                        "objeto": ext_data.get("objeto", ""),
+                        "plazo": ext_data.get("plazo", ""),
+                        "sistema_contratacion": ext_data.get("sistema_contratacion", "Suma Alzada"),
+                        "requerimiento_completo": ext_data.get("requerimiento_completo") or "Se requiere la entrega de los informes técnicos especificados en el TDR.",
+                        "requisitos_calificacion": "\n".join(ext_data.get("requisitos_calificacion", [])),
+                        "factores_evaluacion": "\n".join(ext_data.get("factores_evaluacion", [])) or "Factores de evaluación sugeridos: Certificación voluntaria adicional (20 pts), SLA mejorado (10 pts)."
+                    }
+                    
+                    if ext_data.get("valor_estimado"):
+                        st.session_state.valor_estimado = float(ext_data["valor_estimado"])
+                    else:
+                        st.session_state.valor_estimado = 150000.00
+                        
+                    st.success("✓ Archivo procesado y estructurado con éxito.")
+                    time.sleep(1.0)
+                    st.rerun()
 
         # Lógica de validación
         if btn_validar:
             if not expediente_input:
                 st.markdown('<div class="error-panel">Ingrese un número de expediente válido.</div>', unsafe_allow_html=True)
+            elif len(expediente_input) != 11 or not expediente_input.isdigit():
+                st.session_state.expediente_valido = False
+                st.session_state.expediente_data = None
+                st.session_state.expediente_error = "Formato incorrecto"
             else:
                 st.session_state.expediente_input = expediente_input
                 
-                if expediente_input in ["EXP-SIGED-2026-00982", "EXP-SIGED-2026-00411"]:
+                # Intentar cargar desde Base de Datos (RNF-4 Persistencia / Reanudación)
+                db_state = database.load_process_state(expediente_input)
+                if db_state:
+                    st.session_state.expediente_valido = True
+                    st.session_state.expediente_error = ""
+                    st.session_state.expediente_data = {
+                        "numero": db_state["expediente"],
+                        "asunto": db_state["datos_siged"].get("asunto", ""),
+                        "tdr": db_state["datos_siged"].get("tdr", ""),
+                        "fecha": db_state["datos_siged"].get("fecha", datetime.date.today().strftime('%d/%m/%Y'))
+                    }
+                    st.session_state.tdr_nombre = db_state["datos_siged"].get("tdr", "")
+                    st.session_state.plantilla_final = db_state["plantilla_usada"]
+                    st.session_state.plantilla_sugerida = db_state["plantilla_usada"]
+                    st.session_state.plantilla_confirmada = True
+                    st.session_state.datos_tecnicos = db_state["datos_extraidos"]
+                    
+                    # Cargar datos administrativos
+                    admin = db_state["datos_administrativos"]
+                    st.session_state.nomenclatura = admin.get("nomenclatura", "")
+                    st.session_state.tipo_procedimiento = admin.get("tipo_procedimiento", "Adjudicación Simplificada")
+                    st.session_state.numero_proceso = admin.get("numero_proceso", "")
+                    st.session_state.valor_estimado = float(admin.get("valor_estimado", 0.0))
+                    st.session_state.moneda = admin.get("moneda", "Soles (S/.)")
+                    st.session_state.fuente_val = admin.get("fuente_val", "")
+                    st.session_state.unidad_solicitante = admin.get("unidad_solicitante", "")
+                    st.session_state.responsable = admin.get("responsable", "")
+                    
+                    # Convertir fechas de string a datetime.date
+                    for key, val in [
+                        ("fecha_convocatoria", datetime.date.today()),
+                        ("fecha_consultas", datetime.date.today() + datetime.timedelta(days=4)),
+                        ("fecha_absolucion", datetime.date.today() + datetime.timedelta(days=6)),
+                        ("fecha_presentacion", datetime.date.today() + datetime.timedelta(days=12)),
+                        ("fecha_evaluacion", datetime.date.today() + datetime.timedelta(days=15)),
+                        ("fecha_buenapro", datetime.date.today() + datetime.timedelta(days=18))
+                    ]:
+                        if admin.get(key):
+                            try:
+                                setattr(st.session_state, key, datetime.datetime.strptime(admin.get(key), '%Y-%m-%d').date())
+                            except Exception:
+                                setattr(st.session_state, key, val)
+                        else:
+                            setattr(st.session_state, key, val)
+                            
+                    st.session_state.fuente_financiamiento = admin.get("fuente_financiamiento", "Recursos Directamente Recaudados (RDR)")
+                    st.session_state.observaciones_finan = admin.get("observaciones_finan", "")
+                    st.session_state.datos_admin_guardados = True
+                    st.session_state.bases_generadas = (db_state["estado"] == "Completado" or db_state["estado"] == "Descargado")
+                    
+                    st.success(f"✓ Proceso reanudado desde la base de datos (Estado: {db_state['estado']})")
+                    time.sleep(1.0)
+                    st.session_state.current_step = 3 # Ir directamente a datos técnicos
+                    st.rerun()
+                
+                if expediente_input in ["20260000982", "20260000411"]:
                     # Simulación interactiva paso a paso del flujo de la imagen
                     log_placeholder = st.empty()
                     with log_placeholder.container():
                         st.markdown('<div class="aws-panel">👤 <b>[Paso 1]</b> Portal recibe N° Expediente: ' + expediente_input + '</div>', unsafe_allow_html=True)
-                        time.sleep(0.7)
+                        time.sleep(0.5)
                         st.markdown('<div class="aws-panel">🔄 <b>[Paso 2]</b> Solicitando documento TDR al Sistema SIGED (API SIGED)...</div>', unsafe_allow_html=True)
-                        time.sleep(0.7)
+                        time.sleep(0.5)
                         st.markdown('<div class="aws-panel">📄 <b>[Paso 3]</b> SIGED proporciona archivo digital del TDR en formato PDF/DOCX</div>', unsafe_allow_html=True)
-                        time.sleep(0.7)
-                        st.markdown('<div class="aws-panel">🧠 <b>[Paso 4]</b> Enviando archivo al Componente NLP/OCR para extracción técnica automática (RF-3)...</div>', unsafe_allow_html=True)
-                        time.sleep(0.9)
+                        time.sleep(0.5)
+                        st.markdown('<div class="aws-panel">🧠 <b>[Paso 4]</b> Enviando archivo al backend FastAPI + Ollama (Gemma 3) para extracción técnica estructurada (RF-3)...</div>', unsafe_allow_html=True)
+                        
+                        # Realizar la extracción llamando al backend FastAPI
+                        tdr_content = MOCK_TDRS.get(expediente_input)
+                        ext_success = False
+                        try:
+                            api_resp = requests.post(
+                                "http://127.0.0.1:8000/extract",
+                                json={"tdr_text": tdr_content},
+                                timeout=120 # Timeout amplio para la primera carga de inferencia
+                            )
+                            if api_resp.status_code == 200:
+                                ext_data = api_resp.json()["data"]
+                                ext_success = True
+                            else:
+                                st.error(f"Error del backend FastAPI (Código {api_resp.status_code})")
+                        except Exception as ex:
+                            st.error(f"No se pudo conectar con el backend en http://127.0.0.1:8000: {ex}")
+                            
+                        time.sleep(0.5)
                     log_placeholder.empty()
 
-                    st.session_state.expediente_valido = True
-                    st.session_state.expediente_error = ""
-                    
-                    if expediente_input == "EXP-SIGED-2026-00982":
-                        st.session_state.expediente_data = {
-                            "numero": "EXP-SIGED-2026-00982",
-                            "asunto": "Servicio de Consultoría para la Gestión y Mitigación de Riesgos Informáticos en Osinergmin",
-                            "tdr": "TDR_Consultoria_Ciberseguridad_2026.pdf",
-                            "fecha": "10/06/2026"
-                        }
-                        st.session_state.plantilla_sugerida = "Servicios - Normal"
-                        if not st.session_state.plantilla_final:
-                            st.session_state.plantilla_final = "Servicios - Normal"
-                        st.session_state.datos_tecnicos = {
-                            "objeto": "Contratar un servicio de consultoría especializada para el diagnóstico, gestión y mitigación de riesgos de seguridad de la información e infraestructura de red de Osinergmin.",
-                            "plazo": "180 días calendario contados a partir del día siguiente de la firma del contrato.",
-                            "sistema_contratacion": "Suma Alzada",
-                            "requerimiento_completo": "Se requiere la entrega de 4 informes de diagnóstico situacional, arquitectura sugerida, matriz de riesgos y plan de contingencias corporativo.",
-                            "requisitos_calificacion": "1. Facturación acumulada del postor equivalente a 2 veces el valor estimado en consultorías similares.\n2. ISO 27001 activo de la empresa consultora.\n3. Certificaciones de personal clave: Jefe de Proyecto con PMP y CISM.",
-                            "factores_evaluacion": "Factores de evaluación sugeridos: Certificación voluntaria ISO 22301 (Plan de Continuidad) de la empresa (20 pts), Mejoras del SLA (10 pts)."
-                        }
-                        st.session_state.nomenclatura = "AS-002-2026-OSINERGMIN"
-                        st.session_state.valor_estimado = 180000.00
+                    if ext_success:
+                        st.session_state.expediente_valido = True
+                        st.session_state.expediente_error = ""
                         
-                    elif expediente_input == "EXP-SIGED-2026-00411":
-                        st.session_state.expediente_data = {
-                            "numero": "EXP-SIGED-2026-00411",
-                            "asunto": "Adquisición de Servidores de Alta Disponibilidad para el Data Center de Osinergmin",
-                            "tdr": "TDR_Adquisicion_Servidores_2026.pdf",
-                            "fecha": "05/06/2026"
-                        }
-                        st.session_state.plantilla_sugerida = "Bienes - Normal"
-                        if not st.session_state.plantilla_final:
-                            st.session_state.plantilla_final = "Bienes - Normal"
+                        if expediente_input == "20260000982":
+                            st.session_state.expediente_data = {
+                                "numero": "20260000982",
+                                "asunto": "Servicio de Consultoría para la Gestión y Mitigación de Riesgos Informáticos en Osinergmin",
+                                "tdr": "TDR_Consultoria_Ciberseguridad_2026.pdf",
+                                "fecha": "10/06/2026"
+                            }
+                            st.session_state.tdr_nombre = "TDR_Consultoria_Ciberseguridad_2026.pdf"
+                            st.session_state.plantilla_sugerida = "Servicios - Normal"
+                            if not st.session_state.plantilla_final:
+                                st.session_state.plantilla_final = "Servicios - Normal"
+                            st.session_state.nomenclatura = "AS-002-2026-OSINERGMIN"
+                            
+                        elif expediente_input == "20260000411":
+                            st.session_state.expediente_data = {
+                                "numero": "20260000411",
+                                "asunto": "Adquisición de Servidores de Alta Disponibilidad para el Data Center de Osinergmin",
+                                "tdr": "TDR_Adquisicion_Servidores_2026.pdf",
+                                "fecha": "05/06/2026"
+                            }
+                            st.session_state.tdr_nombre = "TDR_Adquisicion_Servidores_2026.pdf"
+                            st.session_state.plantilla_sugerida = "Bienes - Normal"
+                            if not st.session_state.plantilla_final:
+                                st.session_state.plantilla_final = "Bienes - Normal"
+                            st.session_state.nomenclatura = "LP-001-2026-OSINERGMIN"
+                        
+                        # Poblar con los datos REALMENTE extraídos por el LLM Gemma 3 local
                         st.session_state.datos_tecnicos = {
-                            "objeto": "Adquisición de 4 servidores físicos de alta disponibilidad incluyendo licenciamiento y soporte por 3 años.",
-                            "plazo": "60 días calendario.",
-                            "sistema_contratacion": "Suma Alzada",
-                            "requerimiento_completo": "Servidores de 64 núcleos, 512GB RAM y almacenamiento SSD enterprise.",
-                            "requisitos_calificacion": "Experiencia en bienes similares y soporte local certificado por fabricante.",
-                            "factores_evaluacion": "Mejoras tecnológicas (procesador de mayor capacidad, RAM adicional)."
+                            "objeto": ext_data.get("objeto", ""),
+                            "plazo": ext_data.get("plazo", ""),
+                            "sistema_contratacion": ext_data.get("sistema_contratacion", "Suma Alzada"),
+                            "requerimiento_completo": ext_data.get("requerimiento_completo") or "Se requiere la entrega de los informes técnicos especificados en el TDR.",
+                            "requisitos_calificacion": "\n".join(ext_data.get("requisitos_calificacion", [])),
+                            "factores_evaluacion": "\n".join(ext_data.get("factores_evaluacion", [])) or "Factores de evaluación sugeridos: Certificación voluntaria adicional (20 pts), SLA mejorado (10 pts)."
                         }
-                        st.session_state.nomenclatura = "LP-001-2026-OSINERGMIN"
-                        st.session_state.valor_estimado = 450000.00
+                        
+                        if ext_data.get("valor_estimado"):
+                            st.session_state.valor_estimado = float(ext_data["valor_estimado"])
+                        else:
+                            st.session_state.valor_estimado = 180000.00 if expediente_input == "20260000982" else 450000.00
+                    else:
+                        st.session_state.expediente_valido = False
+                        st.session_state.expediente_error = "Error de extracción"
                 else:
                     st.session_state.expediente_valido = False
                     st.session_state.expediente_data = None
@@ -438,8 +661,10 @@ if st.session_state.current_step == 1:
         if st.session_state.expediente_valido:
             st.markdown('<div class="success-panel">✓ Expediente encontrado y validado en SIGED. Datos técnicos extraídos por NLP/OCR (Paso 4).</div>', unsafe_allow_html=True)
         elif st.session_state.expediente_error:
-            if st.session_state.expediente_error == "No se encontró expediente":
-                st.markdown('<div class="error-panel">❌ No se encontró expediente. Verifique la nomenclatura e intente nuevamente.</div>', unsafe_allow_html=True)
+            if st.session_state.expediente_error == "Formato incorrecto":
+                st.markdown('<div class="error-panel">❌ El número de expediente debe tener exactamente 11 dígitos numéricos (AAAAXXXXXXX).</div>', unsafe_allow_html=True)
+            elif st.session_state.expediente_error == "No se encontró expediente":
+                st.markdown('<div class="error-panel">❌ No se encontró expediente. Verifique el número e intente nuevamente.</div>', unsafe_allow_html=True)
             else:
                 st.markdown('<div class="alert-panel">⚠️ No se identificó un documento de TDR asociado en este expediente del SIGED.</div>', unsafe_allow_html=True)
 
@@ -617,34 +842,11 @@ elif st.session_state.current_step == 3:
         # Buscador en visor
         search_query = st.text_input("🔍 Buscar texto en el TDR original:", placeholder="Escriba palabra clave (e.g. plazo, jefe)")
         
-        # Simulación del documento TDR original en un visor
-        tdr_text = f"""TÉRMINOS DE REFERENCIA (TDR)
-CONTRATACIÓN DE SERVICIO DE CONSULTORÍA
-CÓDIGO INTERNO: TDR-GSTI-2026-004
-
-1. OBJETO DE LA CONTRATACIÓN
-Contratar un servicio de consultoría especializada para el diagnóstico, gestión y mitigación de riesgos de seguridad de la información e infraestructura de red de Osinergmin.
-
-2. PLAZO DE EJECUCIÓN
-El plazo estimado para la ejecución de las prestaciones del servicio es de 180 días calendario contados a partir del día siguiente de la firma del contrato.
-
-3. SISTEMA DE CONTRATACIÓN
-El presente proceso de selección se regirá por el sistema de Suma Alzada.
-
-4. REQUERIMIENTO COMPLETO Y ENTREGABLES
-- Entregable 1: Diagnóstico situacional de seguridad de red.
-- Entregable 2: Arquitectura de seguridad lógica y física sugerida.
-- Entregable 3: Matriz de riesgos informáticos de Osinergmin.
-- Entregable 4: Plan de contingencias y recuperación ante desastres corporativo.
-
-5. REQUISITOS DE CALIFICACIÓN
-- Facturación acumulada de la empresa consultora equivalente a 2 veces el valor estimado en consultorías similares durante los últimos 5 años.
-- Certificación ISO 27001 e ISO 9001 vigente.
-- Jefe de Proyecto: Ingeniero con certificación PMP y CISM (Certified Information Security Manager).
-
-6. PENALIDADES
-Por retraso en la entrega de informes mensuales se aplicará una penalidad de 0.20% del valor de la orden/entregable por cada día calendario de demora.
-"""
+        # Obtener el texto del TDR original (del mock o del extraído por docling)
+        if "tdr_markdown_extraido" in st.session_state and st.session_state.tdr_markdown_extraido:
+            tdr_text = st.session_state.tdr_markdown_extraido
+        else:
+            tdr_text = MOCK_TDRS.get(st.session_state.expediente_input, MOCK_TDRS["20260000982"])
         # Resaltado de búsqueda simulado
         if search_query:
             tdr_display = tdr_text.replace(search_query, f"⚡[{search_query.upper()}]⚡")
@@ -731,7 +933,46 @@ elif st.session_state.current_step == 4:
             st.session_state.fuente_financiamiento = fuente_finan
             st.session_state.observaciones_finan = obs_finan
             st.session_state.datos_admin_guardados = True
-            st.success("Avance del expediente guardado en caché.")
+            
+            # Guardar en Base de Datos SQLite (RNF-4 Persistencia)
+            datos_admin = {
+                "nomenclatura": nomenclatura,
+                "tipo_procedimiento": tipo_proc,
+                "numero_proceso": num_proc,
+                "valor_estimado": float(valor),
+                "moneda": moneda,
+                "fuente_val": fuente_val,
+                "unidad_solicitante": unidad,
+                "responsable": responsable,
+                "fecha_convocatoria": f_conv.strftime('%Y-%m-%d'),
+                "fecha_consultas": f_cons.strftime('%Y-%m-%d'),
+                "fecha_absolucion": f_abs.strftime('%Y-%m-%d'),
+                "fecha_presentacion": f_pres.strftime('%Y-%m-%d'),
+                "fecha_evaluacion": f_eval.strftime('%Y-%m-%d'),
+                "fecha_buenapro": f_buena.strftime('%Y-%m-%d'),
+                "fuente_financiamiento": fuente_finan,
+                "observaciones_finan": obs_finan
+            }
+            
+            asunto_val = st.session_state.expediente_data.get("asunto", "Sin Asunto") if st.session_state.expediente_data else "Sin Asunto"
+            tdr_val = st.session_state.expediente_data.get("tdr", "Sin TDR") if st.session_state.expediente_data else "Sin TDR"
+            responsable_val = responsable if responsable else "admin@osinergmin.gob.pe"
+            
+            success = database.save_or_update_process(
+                numero_expediente=st.session_state.expediente_input,
+                asunto=asunto_val,
+                tdr_nombre=tdr_val,
+                plantilla=st.session_state.plantilla_final,
+                datos_tecnicos=st.session_state.datos_tecnicos,
+                datos_admin=datos_admin,
+                estado="En progreso",
+                responsable=responsable_val
+            )
+            
+            if success:
+                st.success("✓ Avance del expediente guardado exitosamente en Base de Datos relacional local (RNF-4).")
+            else:
+                st.error("Error al guardar el avance en la base de datos.")
             
         if btn_generar:
             if not nomenclatura or valor == 0.0:
@@ -756,6 +997,42 @@ elif st.session_state.current_step == 4:
                 st.session_state.fuente_financiamiento = fuente_finan
                 st.session_state.observaciones_finan = obs_finan
                 st.session_state.bases_generadas = True
+                
+                # Guardar en Base de Datos SQLite (RNF-4 Persistencia)
+                datos_admin = {
+                    "nomenclatura": nomenclatura,
+                    "tipo_procedimiento": tipo_proc,
+                    "numero_proceso": num_proc,
+                    "valor_estimado": float(valor),
+                    "moneda": moneda,
+                    "fuente_val": fuente_val,
+                    "unidad_solicitante": unidad,
+                    "responsable": responsable,
+                    "fecha_convocatoria": f_conv.strftime('%Y-%m-%d'),
+                    "fecha_consultas": f_cons.strftime('%Y-%m-%d'),
+                    "fecha_absolucion": f_abs.strftime('%Y-%m-%d'),
+                    "fecha_presentacion": f_pres.strftime('%Y-%m-%d'),
+                    "fecha_evaluacion": f_eval.strftime('%Y-%m-%d'),
+                    "fecha_buenapro": f_buena.strftime('%Y-%m-%d'),
+                    "fuente_financiamiento": fuente_finan,
+                    "observaciones_finan": obs_finan
+                }
+                
+                asunto_val = st.session_state.expediente_data.get("asunto", "Sin Asunto") if st.session_state.expediente_data else "Sin Asunto"
+                tdr_val = st.session_state.expediente_data.get("tdr", "Sin TDR") if st.session_state.expediente_data else "Sin TDR"
+                responsable_val = responsable if responsable else "admin@osinergmin.gob.pe"
+                
+                database.save_or_update_process(
+                    numero_expediente=st.session_state.expediente_input,
+                    asunto=asunto_val,
+                    tdr_nombre=tdr_val,
+                    plantilla=st.session_state.plantilla_final,
+                    datos_tecnicos=st.session_state.datos_tecnicos,
+                    datos_admin=datos_admin,
+                    estado="Borrador generado",
+                    responsable=responsable_val
+                )
+                
                 st.session_state.current_step = 5
                 st.rerun()
 
@@ -835,49 +1112,105 @@ elif st.session_state.current_step == 5:
                 st.success("Bases regeneradas correctamente.")
             
             # Botón de descarga real del archivo generado [Paso 12]
-            moneda_simbolo = "S/." if st.session_state.moneda == "Soles (S/.)" else "$"
-            borrador_descarga = f"""BASES ADMINISTRATIVAS OFICIALES - OSINERGMIN
-EXPEDIENTE: {st.session_state.expediente_input}
-NOMENCLATURA: {st.session_state.nomenclatura}
-
-OBJETO DE LA CONTRATACIÓN:
-{st.session_state.datos_tecnicos['objeto']}
-
-PLAZO DE EJECUCIÓN:
-{st.session_state.datos_tecnicos['plazo']}
-
-VALOR ESTIMADO:
-{moneda_simbolo} {st.session_state.valor_estimado:,.2f}
-
-CRONOGRAMA:
-- Convocatoria: {st.session_state.fecha_convocatoria.strftime('%d/%m/%Y')}
-- Consultas: {st.session_state.fecha_consultas.strftime('%d/%m/%Y')}
-- Absolución: {st.session_state.fecha_absolucion.strftime('%d/%m/%Y')}
-- Ofertas: {st.session_state.fecha_presentacion.strftime('%d/%m/%Y')}
-- Buena pro: {st.session_state.fecha_buenapro.strftime('%d/%m/%Y')}
-"""
+            docx_data = None
+            if checklist_completado:
+                try:
+                    f_conv = st.session_state.fecha_convocatoria.strftime('%d/%m/%Y')
+                    f_cons = st.session_state.fecha_consultas.strftime('%d/%m/%Y')
+                    f_abs = st.session_state.fecha_absolucion.strftime('%d/%m/%Y')
+                    f_pres = st.session_state.fecha_presentacion.strftime('%d/%m/%Y')
+                    f_buena = st.session_state.fecha_buenapro.strftime('%d/%m/%Y')
+                    
+                    payload = {
+                        "nomenclatura": st.session_state.nomenclatura,
+                        "numero_expediente": st.session_state.expediente_input,
+                        "objeto": st.session_state.datos_tecnicos['objeto'],
+                        "plazo": st.session_state.datos_tecnicos['plazo'],
+                        "valor_estimado": float(st.session_state.valor_estimado),
+                        "moneda": st.session_state.moneda,
+                        "unidad_solicitante": st.session_state.unidad_solicitante,
+                        "responsable": st.session_state.responsable,
+                        "fecha_convocatoria": f_conv,
+                        "fecha_consultas": f_cons,
+                        "fecha_absolucion": f_abs,
+                        "fecha_presentacion": f_pres,
+                        "fecha_buenapro": f_buena,
+                        "fuente_financiamiento": st.session_state.fuente_financiamiento,
+                        "requisitos_calificacion": st.session_state.datos_tecnicos['requisitos_calificacion'],
+                        "factores_evaluacion": st.session_state.datos_tecnicos['factores_evaluacion']
+                    }
+                    
+                    api_resp = requests.post("http://127.0.0.1:8000/generate_docx", json=payload, timeout=30)
+                    if api_resp.status_code == 200:
+                        docx_data = api_resp.content
+                    else:
+                        st.error(f"Error de generación en API backend: {api_resp.text}")
+                except Exception as ex:
+                    st.error(f"No se pudo conectar al backend para generar el DOCX: {ex}")
+            
             st.download_button(
-                "📥 Descargar DOCX",
-                borrador_descarga,
-                file_name=f"Bases_{st.session_state.nomenclatura}.docx",
+                "📥 Descargar DOCX (Generado por API)",
+                data=docx_data if docx_data else b"",
+                file_name=f"Bases_{st.session_state.nomenclatura.replace('/', '_')}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 use_container_width=True,
-                disabled=not checklist_completado
+                disabled=not checklist_completado or docx_data is None
             )
             
         if st.button("Finalizar y Guardar en Historial ➡️", use_container_width=True, disabled=not checklist_completado):
             with st.spinner("Guardando estado e integrando Base Final .DOC (Paso 12)..."):
                 time.sleep(1.2)
-            # Agregar al historial si no existe
-            en_historial = any(h["expediente"] == st.session_state.expediente_input for h in st.session_state.historial_expedientes)
-            if not en_historial:
-                st.session_state.historial_expedientes.insert(0, {
-                    "expediente": st.session_state.expediente_input,
-                    "plantilla": st.session_state.plantilla_final,
-                    "creacion": datetime.date.today().strftime('%d/%m/%Y'),
-                    "modificacion": datetime.date.today().strftime('%d/%m/%Y'),
-                    "responsable": f"{st.session_state.responsable.lower().replace(' ', '')}@osinergmin.gob.pe",
-                    "estado": "Descargado" if checklist_completado else "Borrador generado"
-                })
+            
+            # Guardar en Base de Datos SQLite (RNF-4 Persistencia)
+            try:
+                f_conv_str = st.session_state.fecha_convocatoria.strftime('%Y-%m-%d')
+                f_cons_str = st.session_state.fecha_consultas.strftime('%Y-%m-%d')
+                f_abs_str = st.session_state.fecha_absolucion.strftime('%Y-%m-%d')
+                f_pres_str = st.session_state.fecha_presentacion.strftime('%Y-%m-%d')
+                f_eval_str = st.session_state.fecha_evaluacion.strftime('%Y-%m-%d')
+                f_buena_str = st.session_state.fecha_buenapro.strftime('%Y-%m-%d')
+            except Exception:
+                f_conv_str = datetime.date.today().strftime('%Y-%m-%d')
+                f_cons_str = datetime.date.today().strftime('%Y-%m-%d')
+                f_abs_str = datetime.date.today().strftime('%Y-%m-%d')
+                f_pres_str = datetime.date.today().strftime('%Y-%m-%d')
+                f_eval_str = datetime.date.today().strftime('%Y-%m-%d')
+                f_buena_str = datetime.date.today().strftime('%Y-%m-%d')
+                
+            datos_admin = {
+                "nomenclatura": st.session_state.nomenclatura,
+                "tipo_procedimiento": st.session_state.tipo_procedimiento,
+                "numero_proceso": st.session_state.numero_proceso,
+                "valor_estimado": float(st.session_state.valor_estimado),
+                "moneda": st.session_state.moneda,
+                "fuente_val": st.session_state.fuente_valor,
+                "unidad_solicitante": st.session_state.unidad_solicitante,
+                "responsable": st.session_state.responsable,
+                "fecha_convocatoria": f_conv_str,
+                "fecha_consultas": f_cons_str,
+                "fecha_absolucion": f_abs_str,
+                "fecha_presentacion": f_pres_str,
+                "fecha_evaluacion": f_eval_str,
+                "fecha_buenapro": f_buena_str,
+                "fuente_financiamiento": st.session_state.fuente_financiamiento,
+                "observaciones_finan": st.session_state.observaciones_finan
+            }
+            
+            asunto_val = st.session_state.expediente_data.get("asunto", "Sin Asunto") if st.session_state.expediente_data else "Sin Asunto"
+            tdr_val = st.session_state.expediente_data.get("tdr", "Sin TDR") if st.session_state.expediente_data else "Sin TDR"
+            responsable_val = st.session_state.responsable if st.session_state.responsable else "admin@osinergmin.gob.pe"
+            
+            database.save_or_update_process(
+                numero_expediente=st.session_state.expediente_input,
+                asunto=asunto_val,
+                tdr_nombre=tdr_val,
+                plantilla=st.session_state.plantilla_final,
+                datos_tecnicos=st.session_state.datos_tecnicos,
+                datos_admin=datos_admin,
+                estado="Descargado" if checklist_completado else "Borrador generado",
+                responsable=responsable_val
+            )
+            
             st.session_state.current_step = 6
             st.rerun()
 
@@ -924,60 +1257,145 @@ elif st.session_state.current_step == 6:
     # Buscadores / Filtros
     col_fi1, col_fi2, col_fi3 = st.columns(3)
     with col_fi1:
-        search_exp = st.text_input("Buscar por número de expediente:", placeholder="EXP-SIGED-...")
+        search_exp = st.text_input("Buscar por número de expediente:", placeholder="2026...")
     with col_fi2:
         search_date = st.text_input("Buscar por fecha (DD/MM/AAAA):", placeholder="e.g. 12/06/2026")
     with col_fi3:
         search_user = st.text_input("Buscar por usuario / responsable:", placeholder="e.g. jortiz")
         
     # Lógica de filtrado
-    df_historial = pd.DataFrame(st.session_state.historial_expedientes)
+    df_historial = pd.DataFrame(database.get_all_processes_history())
     
-    if search_exp:
-        df_historial = df_historial[df_historial["expediente"].str.contains(search_exp, case=False)]
-    if search_date:
-        df_historial = df_historial[df_historial["creacion"].str.contains(search_date, case=False)]
-    if search_user:
-        df_historial = df_historial[df_historial["responsable"].str.contains(search_user, case=False)]
-        
+    if len(df_historial) > 0:
+        if search_exp:
+            df_historial = df_historial[df_historial["expediente"].str.contains(search_exp, case=False)]
+        if search_date:
+            df_historial = df_historial[df_historial["creacion"].str.contains(search_date, case=False)]
+        if search_user:
+            df_historial = df_historial[df_historial["responsable"].str.contains(search_user, case=False)]
+            
     # Renderizar tabla
     st.markdown("#### Expedientes Registrados")
     
-    for idx, row in df_historial.iterrows():
-        col_row1, col_row2, col_row3 = st.columns([3, 1, 1.5])
-        with col_row1:
-            st.markdown(f"""
-            <div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-                <b>Expediente:</b> <code>{row['expediente']}</code> | <b>Plantilla:</b> {row['plantilla']}<br>
-                <span style="font-size: 0.8rem; color:#64748b;"><b>Creación:</b> {row['creacion']} | <b>Modificación:</b> {row['modificacion']} | <b>Responsable:</b> {row['responsable']}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        with col_row2:
-            badge_color = "#e0f2fe" if row['estado'] == "Borrador generado" else ("#fef3c7" if row['estado'] == "En progreso" else "#dcfce7")
-            text_color = "#0369a1" if row['estado'] == "Borrador generado" else ("#b45309" if row['estado'] == "En progreso" else "#15803d")
-            st.markdown(f"""
-            <div style="text-align: center; margin-top: 10px;">
-                <span style="background-color: {badge_color}; color: {text_color}; font-weight: bold; font-size: 0.8rem; padding: 5px 10px; border-radius: 12px;">{row['estado']}</span>
-            </div>
-            """, unsafe_allow_html=True)
-        with col_row3:
-            col_act1, col_act2 = st.columns(2)
-            with col_act1:
-                # Botón Retomar
-                if st.button("Retomar", key=f"retomar_{idx}"):
-                    st.session_state.expediente_input = row["expediente"]
-                    st.session_state.expediente_valido = True
-                    st.session_state.plantilla_final = row["plantilla"]
-                    st.session_state.current_step = 3 # Ir a revisión de datos técnicos
-                    st.rerun()
-            with col_act2:
-                # Descargar DOCX
-                st.download_button(
-                    "DOCX",
-                    f"Bases de prueba del expediente {row['expediente']}",
-                    file_name=f"Bases_{row['expediente']}.docx",
-                    key=f"dl_{idx}"
-                )
+    if len(df_historial) == 0:
+        st.markdown("<p style='color: #64748b;'>No se encontraron expedientes en el historial.</p>", unsafe_allow_html=True)
+    else:
+        for idx, row in df_historial.iterrows():
+            col_row1, col_row2, col_row3 = st.columns([3, 1, 1.5])
+            with col_row1:
+                st.markdown(f"""
+                <div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                    <b>Expediente:</b> <code>{row['expediente']}</code> | <b>Plantilla:</b> {row['plantilla']}<br>
+                    <span style="font-size: 0.8rem; color:#64748b;"><b>Creación:</b> {row['creacion']} | <b>Modificación:</b> {row['modificacion']} | <b>Responsable:</b> {row['responsable']}</span>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_row2:
+                badge_color = "#e0f2fe" if row['estado'] == "Borrador generado" else ("#fef3c7" if row['estado'] == "En progreso" else "#dcfce7")
+                text_color = "#0369a1" if row['estado'] == "Borrador generado" else ("#b45309" if row['estado'] == "En progreso" else "#15803d")
+                st.markdown(f"""
+                <div style="text-align: center; margin-top: 10px;">
+                    <span style="background-color: {badge_color}; color: {text_color}; font-weight: bold; font-size: 0.8rem; padding: 5px 10px; border-radius: 12px;">{row['estado']}</span>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_row3:
+                col_act1, col_act2 = st.columns(2)
+                with col_act1:
+                    # Botón Retomar con carga completa de base de datos
+                    if st.button("Retomar", key=f"retomar_{idx}"):
+                        db_state = database.load_process_state(row["expediente"])
+                        if db_state:
+                            st.session_state.expediente_input = db_state["expediente"]
+                            st.session_state.expediente_valido = True
+                            st.session_state.expediente_error = ""
+                            st.session_state.expediente_data = {
+                                "numero": db_state["expediente"],
+                                "asunto": db_state["datos_siged"].get("asunto", ""),
+                                "tdr": db_state["datos_siged"].get("tdr", ""),
+                                "fecha": db_state["datos_siged"].get("fecha", datetime.date.today().strftime('%d/%m/%Y'))
+                            }
+                            st.session_state.tdr_nombre = db_state["datos_siged"].get("tdr", "")
+                            st.session_state.plantilla_final = db_state["plantilla_usada"]
+                            st.session_state.plantilla_sugerida = db_state["plantilla_usada"]
+                            st.session_state.plantilla_confirmada = True
+                            st.session_state.datos_tecnicos = db_state["datos_extraidos"]
+                            
+                            # Cargar datos administrativos
+                            admin = db_state["datos_administrativos"]
+                            st.session_state.nomenclatura = admin.get("nomenclatura", "")
+                            st.session_state.tipo_procedimiento = admin.get("tipo_procedimiento", "Adjudicación Simplificada")
+                            st.session_state.numero_proceso = admin.get("numero_proceso", "")
+                            st.session_state.valor_estimado = float(admin.get("valor_estimado", 0.0))
+                            st.session_state.moneda = admin.get("moneda", "Soles (S/.)")
+                            st.session_state.fuente_val = admin.get("fuente_val", "")
+                            st.session_state.unidad_solicitante = admin.get("unidad_solicitante", "")
+                            st.session_state.responsable = admin.get("responsable", "")
+                            
+                            # Convertir fechas de string a datetime.date
+                            for key, val in [
+                                ("fecha_convocatoria", datetime.date.today()),
+                                ("fecha_consultas", datetime.date.today() + datetime.timedelta(days=4)),
+                                ("fecha_absolucion", datetime.date.today() + datetime.timedelta(days=6)),
+                                ("fecha_presentacion", datetime.date.today() + datetime.timedelta(days=12)),
+                                ("fecha_evaluacion", datetime.date.today() + datetime.timedelta(days=15)),
+                                ("fecha_buenapro", datetime.date.today() + datetime.timedelta(days=18))
+                            ]:
+                                if admin.get(key):
+                                    try:
+                                        setattr(st.session_state, key, datetime.datetime.strptime(admin.get(key), '%Y-%m-%d').date())
+                                    except Exception:
+                                        setattr(st.session_state, key, val)
+                                else:
+                                    setattr(st.session_state, key, val)
+                                    
+                            st.session_state.fuente_financiamiento = admin.get("fuente_financiamiento", "Recursos Directamente Recaudados (RDR)")
+                            st.session_state.observaciones_finan = admin.get("observaciones_finan", "")
+                            st.session_state.datos_admin_guardados = True
+                            st.session_state.bases_generadas = (db_state["estado"] == "Completado" or db_state["estado"] == "Descargado")
+                            
+                            st.session_state.current_step = 3 # Ir a revisión de datos técnicos
+                            st.rerun()
+                with col_act2:
+                    # Descargar DOCX real generado desde API backend
+                    hist_docx_data = None
+                    try:
+                        db_state = database.load_process_state(row["expediente"])
+                        if db_state:
+                            admin = db_state["datos_administrativos"]
+                            tecnicos = db_state["datos_extraidos"]
+                            
+                            payload = {
+                                "nomenclatura": admin.get("nomenclatura", "AS-002-2026-OSINERGMIN"),
+                                "numero_expediente": db_state["expediente"],
+                                "objeto": tecnicos.get("objeto", ""),
+                                "plazo": tecnicos.get("plazo", ""),
+                                "valor_estimado": float(admin.get("valor_estimado", 0.0)),
+                                "moneda": admin.get("moneda", "Soles (S/.)"),
+                                "unidad_solicitante": admin.get("unidad_solicitante", ""),
+                                "responsable": admin.get("responsable", ""),
+                                "fecha_convocatoria": admin.get("fecha_convocatoria", ""),
+                                "fecha_consultas": admin.get("fecha_consultas", ""),
+                                "fecha_absolucion": admin.get("fecha_absolucion", ""),
+                                "fecha_presentacion": admin.get("fecha_presentacion", ""),
+                                "fecha_buenapro": admin.get("fecha_buenapro", ""),
+                                "fuente_financiamiento": admin.get("fuente_financiamiento", ""),
+                                "requisitos_calificacion": tecnicos.get("requisitos_calificacion", ""),
+                                "factores_evaluacion": tecnicos.get("factores_evaluacion", "")
+                            }
+                            
+                            api_resp = requests.post("http://127.0.0.1:8000/generate_docx", json=payload, timeout=10)
+                            if api_resp.status_code == 200:
+                                hist_docx_data = api_resp.content
+                    except Exception as ex:
+                        pass
+                    
+                    st.download_button(
+                        "DOCX",
+                        data=hist_docx_data if hist_docx_data else b"",
+                        file_name=f"Bases_{row['expediente']}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        key=f"dl_{idx}",
+                        disabled=hist_docx_data is None
+                    )
                 
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("➕ Iniciar Nuevo Proceso", type="primary"):
