@@ -352,6 +352,37 @@ if "observaciones_finan" not in st.session_state:
 if "datos_admin_guardados" not in st.session_state:
     st.session_state.datos_admin_guardados = False
 
+# Función para renderizar el indicador visual de pasos (UI Premium)
+def render_step_indicator(current_step):
+    steps = [
+        "1. Carga TDR",
+        "2. Plantilla",
+        "3. Datos Técnicos",
+        "4. Datos Administrativos",
+        "5. Vista Preliminar",
+        "6. Descarga / Historial"
+    ]
+    
+    html = '<div class="step-indicator-container">'
+    for idx, name in enumerate(steps):
+        step_num = idx + 1
+        active_class = ""
+        if step_num == current_step:
+            active_class = " active"
+        elif step_num < current_step:
+            active_class = " completed"
+            
+        num_content = "✓" if step_num < current_step else str(step_num)
+        
+        html += f"""
+        <div class="step-item{active_class}">
+            <div class="step-number">{num_content}</div>
+            <div style="margin-top: 4px;">{name}</div>
+        </div>
+        """
+    html += '</div>'
+    st.markdown(html, unsafe_allow_html=True)
+
 # ==============================================================================
 # MENU LATERAL - INFORMACIÓN CORPORATIVA
 # ==============================================================================
@@ -385,6 +416,29 @@ with st.sidebar:
     else:
         st.caption("Ningún expediente cargado.")
 
+    st.markdown("<hr style='border-color: #334155; margin: 10px 0;'>", unsafe_allow_html=True)
+    with st.expander("💡 Guía Rápida & Glosario", expanded=False):
+        st.markdown("""
+        <small style="color: #cbd5e1;">
+        <b>Flujo de Elaboración:</b><br>
+        1. <b>Carga TDR</b>: Ingrese código SIGED o archivo local.<br>
+        2. <b>Plantilla</b>: Seleccione tipo/variante de bases.<br>
+        3. <b>Datos Técnicos</b>: OCR y NLP local (Gemma 3).<br>
+        4. <b>Datos Admin</b>: Fechas, montos y responsables.<br>
+        5. <b>Vista Preliminar</b>: Visor de borrador y checklist.<br>
+        6. <b>Descarga</b>: Obtención de bases finales en Word.<br><br>
+        
+        <b>Glosario Osinergmin:</b><br>
+        • <b>SIGED</b>: Gestor de expedientes oficiales.<br>
+        • <b>TDR</b>: Requisitos del bien o servicio.<br>
+        • <b>RAG (Qdrant)</b>: Recomendación de cláusulas OSCE.<br>
+        • <b>Bases Estándar</b>: Modelos oficiales de contratación.
+        </small>
+        """, unsafe_allow_html=True)
+
+
+# Renderizar el indicador de progreso multipaso a nivel global en la UI
+render_step_indicator(st.session_state.current_step)
 
 # ==============================================================================
 # PANTALLA 1: INICIO / INGRESO DE EXPEDIENTE SIGED
@@ -785,23 +839,38 @@ elif st.session_state.current_step == 3:
         reqs_calif_val = st.text_area("Requisitos de calificación", value=st.session_state.datos_tecnicos["requisitos_calificacion"], height=100)
         factores_val = st.text_area("Factores de evaluación", value=st.session_state.datos_tecnicos["factores_evaluacion"], height=80)
         
-        # Mostrar indicadores de confianza
+        # Calcular confianza dinámicamente según el contenido real
+        def get_conf_class(text):
+            if not text or len(text.strip()) == 0 or "sugerido" in text.lower() or "se requiere" in text.lower():
+                return "conf-red", "Rojo"
+            elif len(text.strip()) < 35:
+                return "conf-orange", "Naranja"
+            else:
+                return "conf-green", "Verde"
+
+        conf_obj_class, conf_obj_txt = get_conf_class(objeto_val)
+        conf_plz_class, conf_plz_txt = get_conf_class(plazo_val)
+        conf_sis_class, conf_sis_txt = get_conf_class(sistema_val)
+        conf_req_class, conf_req_txt = get_conf_class(reqs_calif_val)
+        conf_fac_class, conf_fac_txt = get_conf_class(factores_val)
+
         st.markdown("##### Indicadores de Confianza en Extracción (AWS OCR/NLP)")
         col_c1, col_c2, col_c3 = st.columns(3)
         with col_c1:
-            st.markdown("""
-            • Objeto: <span class="confidence-badge conf-green">Verde</span><br>
-            • Plazo: <span class="confidence-badge conf-green">Verde</span>
+            st.markdown(f"""
+            • Objeto: <span class="confidence-badge {conf_obj_class}">{conf_obj_txt}</span><br>
+            • Plazo: <span class="confidence-badge {conf_plz_class}">{conf_plz_txt}</span>
             """, unsafe_allow_html=True)
         with col_c2:
-            st.markdown("""
-            • Sistema: <span class="confidence-badge conf-orange">Naranja</span><br>
-            • Requisitos: <span class="confidence-badge conf-orange">Naranja</span>
+            st.markdown(f"""
+            • Sistema: <span class="confidence-badge {conf_sis_class}">{conf_sis_txt}</span><br>
+            • Requisitos: <span class="confidence-badge {conf_req_class}">{conf_req_txt}</span>
             """, unsafe_allow_html=True)
         with col_c3:
-            st.markdown("""
-            • Factores: <span class="confidence-badge conf-red">Rojo</span>
+            st.markdown(f"""
+            • Factores: <span class="confidence-badge {conf_fac_class}">{conf_fac_txt}</span>
             """, unsafe_allow_html=True)
+        st.caption("🟢 **Verde**: Datos completos. 🟡 **Naranja**: Datos breves (revisar). 🔴 **Rojo**: Vacío o requiere ingreso manual.")
             
         # RAG / Qdrant Clause Recommendations (Local Vector Search)
         st.markdown("<hr style='border-color: #cbd5e1; margin: 15px 0;'>", unsafe_allow_html=True)
@@ -1175,7 +1244,9 @@ elif st.session_state.current_step == 5:
                         "fecha_buenapro": f_buena,
                         "fuente_financiamiento": st.session_state.fuente_financiamiento,
                         "requisitos_calificacion": st.session_state.datos_tecnicos['requisitos_calificacion'],
-                        "factores_evaluacion": st.session_state.datos_tecnicos['factores_evaluacion']
+                        "factores_evaluacion": st.session_state.datos_tecnicos['factores_evaluacion'],
+                        "plantilla_usada": st.session_state.plantilla_final,
+                        "sistema_contratacion": st.session_state.datos_tecnicos.get('sistema_contratacion', 'Suma Alzada')
                     }
                     
                     api_resp = requests.post("http://127.0.0.1:8000/generate_docx", json=payload, timeout=30)
@@ -1417,7 +1488,9 @@ elif st.session_state.current_step == 6:
                                 "fecha_buenapro": admin.get("fecha_buenapro", ""),
                                 "fuente_financiamiento": admin.get("fuente_financiamiento", ""),
                                 "requisitos_calificacion": tecnicos.get("requisitos_calificacion", ""),
-                                "factores_evaluacion": tecnicos.get("factores_evaluacion", "")
+                                "factores_evaluacion": tecnicos.get("factores_evaluacion", ""),
+                                "plantilla_usada": db_state.get("plantilla_usada", "base"),
+                                "sistema_contratacion": tecnicos.get("sistema_contratacion", "Suma Alzada")
                             }
                             
                             api_resp = requests.post("http://127.0.0.1:8000/generate_docx", json=payload, timeout=10)

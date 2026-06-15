@@ -44,6 +44,18 @@ def init_db():
     )
     """)
     
+    # Tabla de auditoría para trazabilidad de usuario (RNF-1)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS auditoria (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id VARCHAR(100),
+        accion VARCHAR(100),
+        numero_expediente VARCHAR(50),
+        detalles TEXT,
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    
     conn.commit()
     
     # Pre-poblar con datos mock de Osinergmin si está vacío (RNF-4)
@@ -341,3 +353,21 @@ def get_all_processes_history():
             "datos_admin": datos_admin
         })
     return history
+
+def log_audit_action(usuario_id, accion, numero_expediente, detalles):
+    """Registra una acción del usuario en la tabla de auditoría para trazabilidad (RNF-1)."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO auditoria (usuario_id, accion, numero_expediente, detalles)
+            VALUES (?, ?, ?, ?)
+        """, (usuario_id, accion, numero_expediente, detalles))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error al registrar auditoría: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()

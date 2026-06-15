@@ -167,6 +167,8 @@ class DocxGenerationRequest(BaseModel):
     fuente_financiamiento: str
     requisitos_calificacion: str
     factores_evaluacion: str
+    plantilla_usada: Optional[str] = "base"
+    sistema_contratacion: Optional[str] = "Suma Alzada"
 
 # ==============================================================================
 # ENDPOINTS DE LA API
@@ -248,6 +250,17 @@ async def extract_tdr_data(request: ExtractRequest):
         raw_content = response.message.content
         extracted_data = TDRExtractedData.model_validate_json(raw_content)
         
+        # Registrar auditoría (RNF-1)
+        try:
+            database.log_audit_action(
+                usuario_id="sistema",
+                accion="EXTRACT_TDR_TEXT",
+                numero_expediente=None,
+                detalles=f"Extracción estructurada exitosa sobre texto de TDR ({len(request.tdr_text)} caracteres)."
+            )
+        except Exception as db_err:
+            print(f"Error al registrar auditoría: {db_err}")
+            
         return ExtractResponse(
             success=True,
             data=extracted_data,
@@ -304,6 +317,17 @@ async def extract_from_file(file: UploadFile = File(...)):
         raw_content = response.message.content
         extracted_data = TDRExtractedData.model_validate_json(raw_content)
         
+        # Registrar auditoría (RNF-1)
+        try:
+            database.log_audit_action(
+                usuario_id="sistema",
+                accion="EXTRACT_TDR_FILE",
+                numero_expediente=None,
+                detalles=f"Extracción y OCR local con Docling exitosa sobre archivo: {file.filename}."
+            )
+        except Exception as db_err:
+            print(f"Error al registrar auditoría: {db_err}")
+            
         return ExtractResponse(
             success=True,
             data=extracted_data,
@@ -325,20 +349,48 @@ async def generate_docx(request: DocxGenerationRequest):
     Endpoint para la generación de Bases formateadas en Word (.docx) utilizando docxtpl.
     """
     try:
-        template_path = "plantilla_base.docx"
+        # Mapeo de nombres de plantilla a archivos físicos
+        template_map = {
+            "Bienes - Normal": "plantilla_bienes_normal.docx",
+            "Bienes - Abreviado": "plantilla_bienes_abreviado.docx",
+            "Servicios - Normal": "plantilla_servicios_normal.docx",
+            "Servicios - Abreviado": "plantilla_servicios_abreviado.docx",
+            "Consultoría - Normal": "plantilla_consultoria_normal.docx",
+            "Consultoría - Abreviado": "plantilla_consultoria_abreviado.docx",
+        }
+        
+        template_name = request.plantilla_usada or "base"
+        template_file = template_map.get(template_name, "plantilla_base.docx")
+        
+        template_path = template_file
+        if not os.path.exists(template_path):
+            template_path = "plantilla_base.docx"
+            
         if not os.path.exists(template_path):
             raise HTTPException(
                 status_code=404, 
-                detail="No se encontró la plantilla 'plantilla_base.docx' en el directorio de trabajo."
+                detail=f"No se encontró la plantilla '{template_path}' en el directorio de trabajo."
             )
             
         doc = DocxTemplate(template_path)
         
+        # Registrar auditoría (RNF-1)
+        try:
+            database.log_audit_action(
+                usuario_id=request.responsable or "sistema",
+                accion="GENERATE_DOCX",
+                numero_expediente=request.numero_expediente,
+                detalles=f"Generación de borrador de bases en Word. Nomenclatura: {request.nomenclatura}. Plantilla: {template_name}."
+            )
+        except Exception as db_err:
+            print(f"Error al registrar auditoría: {db_err}")
+            
         context = {
             "nomenclatura": request.nomenclatura,
             "numero_expediente": request.numero_expediente,
             "objeto": request.objeto,
             "plazo": request.plazo,
+            "sistema_contratacion": request.sistema_contratacion or "Suma Alzada",
             "valor_estimado": f"{request.valor_estimado:,.2f}",
             "moneda": request.moneda,
             "unidad_solicitante": request.unidad_solicitante,
@@ -385,6 +437,18 @@ def recommend_clauses(request: RecommendRequest):
             category_filter=request.categoria,
             limit=request.limit
         )
+        
+        # Registrar auditoría (RNF-1)
+        try:
+            database.log_audit_action(
+                usuario_id="sistema",
+                accion="RECOMMEND_CLAUSES",
+                numero_expediente=None,
+                detalles=f"Consulta semántica en Qdrant: '{request.text[:80]}' (filtro: {request.categoria})."
+            )
+        except Exception as db_err:
+            print(f"Error al registrar auditoría: {db_err}")
+            
         recommendations = [
             ClauseRecommendation(
                 texto=r["texto"],
