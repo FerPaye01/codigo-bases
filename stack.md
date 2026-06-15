@@ -23,7 +23,7 @@
 | **Backend API** | FastAPI | >= 0.110 | API REST asíncrona, orquestación | ✅ Activo |
 | **LLM Local** | Ollama + Gemma 3 1B | gemma3:1b | Extracción NLP local (testing) | ✅ Activo |
 | **Base de Datos** | SQLite (PostgreSQL en prod) | 3.x / 16.x | Datos relacionales: expedientes, procesos, auditoría | ✅ Activo |
-| **Vector DB** | Qdrant | >= 1.10 | Búsqueda semántica RAG, indexación de plantillas y normas | ⚠️ Por implementar |
+| **Vector DB** | Qdrant | >= 1.10 | Búsqueda semántica RAG, indexación de plantillas y normas | ✅ Activo |
 | **Motor Plantillas** | docxtpl + python-docx | >= 1.0 (docxtpl) | Generación de documentos .docx desde plantillas Jinja2 | ✅ Activo |
 | **OCR & Layout Local** | IBM Docling | >= 2.0 | Extracción de estructura, tablas y OCR de TDRs | ✅ Activo |
 | **NLP / Reglas** | spaCy + Pydantic | >= 3.7 | Extracción determinista + validación estructurada | ✅ Activo |
