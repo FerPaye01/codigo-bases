@@ -4,7 +4,7 @@ import time
 
 def test_extract_file():
     url = "http://127.0.0.1:8000/extract_file"
-    pdf_path = "/data/proyectos/proyecto-bases/F1-PS4-2-PE-03 Especificacion de Requerimientos y Analisis Funcional_Bases.pdf"
+    pdf_path = "LLM-NESTED LEARNING/nested-learning-kmccleary3301/google_papers/Nested_Learning.pdf"
     
     print(f"Testing /extract_file with document: {pdf_path}")
     print("This will run local IBM Docling parsing + local Ollama Gemma 3 inference. Please wait...")

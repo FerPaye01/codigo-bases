@@ -22,4 +22,4 @@ qdrant_db/
 osinergmin-klck-sisseg-frontend-*/
 osinergmin-klck_sisseg_frontend-*/
 test_output.docx
-
+.env

@@ -7,7 +7,7 @@ def test_docling():
     converter = DocumentConverter()
     print(f"Converter initialized in {time.time() - start_time:.2f} seconds.")
     
-    pdf_path = "/data/proyectos/proyecto-bases/F1-PS4-2-PE-03 Especificacion de Requerimientos y Analisis Funcional_Bases.pdf"
+    pdf_path = "LLM-NESTED LEARNING/nested-learning-kmccleary3301/google_papers/Nested_Learning.pdf"
     print(f"Converting PDF: {pdf_path} (First page/sample)...")
     
     start_time = time.time()

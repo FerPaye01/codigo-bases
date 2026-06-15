@@ -323,3 +323,4 @@ Te dejo una versión directa:
 > Para avanzar, podríamos solicitar al equipo SIGED el Swagger/OpenAPI o documentación equivalente, ejemplos de request/response, autenticación, ambiente de pruebas, catálogo de tipos documentales y reglas para identificar el TDR dentro del expediente.
 
 Mi recomendación: **sí, usa Deep Research**, pero como apoyo. La respuesta definitiva sobre endpoints probablemente debe venir del **equipo SIGED o arquitectura/integraciones internas**.
+

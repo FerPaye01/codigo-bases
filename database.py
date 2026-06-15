@@ -2,60 +2,215 @@ import sqlite3
 import json
 import uuid
 import os
+import re
 from datetime import datetime
+from dotenv import load_dotenv
 
-DATABASE_FILE = "/data/proyectos/proyecto-bases/bases_osinergmin.db"
+# Cargar variables de entorno
+load_dotenv()
+
+DB_TYPE = os.getenv("DB_TYPE", "sqlite").lower()
+
+# Configuración SQLite
+DATABASE_FILE = os.getenv("SQLITE_DB_FILE", "bases_osinergmin.db")
+
+# Configuración Oracle
+ORACLE_USER = os.getenv("ORACLE_DB_USER")
+ORACLE_PASSWORD = os.getenv("ORACLE_DB_PASSWORD")
+ORACLE_HOST = os.getenv("ORACLE_DB_HOST")
+ORACLE_PORT = os.getenv("ORACLE_DB_PORT", "1521")
+ORACLE_SERVICE = os.getenv("ORACLE_DB_SERVICE")
+ORACLE_DSN = os.getenv("ORACLE_DB_DSN")
+
+def adapt_query(query):
+    """Adapta los placeholders y funciones de SQL para compatibilidad con Oracle."""
+    if DB_TYPE == "oracle":
+        # 1. Reemplazar '?' por ':1', ':2', etc.
+        parts = query.split('?')
+        new_query = ""
+        for i, part in enumerate(parts[:-1]):
+            new_query += part + f":{i+1}"
+        new_query += parts[-1]
+        query = new_query
+        
+        # 2. Reemplazar 'LIMIT <N>' por 'FETCH FIRST <N> ROWS ONLY'
+        query = re.sub(r'(?i)\bLIMIT\s+(\d+)\b', r'FETCH FIRST \1 ROWS ONLY', query)
+    return query
+
+def get_now_value():
+    """Retorna la fecha/hora actual en el formato adecuado para el motor de DB."""
+    if DB_TYPE == "oracle":
+        return datetime.now()
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+class OracleCursorWrapper:
+    def __init__(self, cursor):
+        self.cursor = cursor
+        
+    def execute(self, query, params=None):
+        adapted = adapt_query(query)
+        if params is not None:
+            res = self.cursor.execute(adapted, params)
+        else:
+            res = self.cursor.execute(adapted)
+            
+        # Re-configurar rowfactory después de cada execute() ya que oracledb lo limpia
+        if self.cursor.description is not None:
+            self.cursor.rowfactory = lambda *row: dict(zip([col[0].lower() for col in self.cursor.description], row))
+            
+        return res
+        
+    def fetchone(self):
+        return self.cursor.fetchone()
+        
+    def fetchall(self):
+        return self.cursor.fetchall()
+        
+    def close(self):
+        self.cursor.close()
+        
+    def __getattr__(self, name):
+        return getattr(self.cursor, name)
+
+class ConnectionWrapper:
+    def __init__(self, conn):
+        self.conn = conn
+        
+    def cursor(self):
+        cursor = self.conn.cursor()
+        if DB_TYPE == "oracle":
+            return OracleCursorWrapper(cursor)
+        return cursor
+        
+    def commit(self):
+        self.conn.commit()
+        
+    def rollback(self):
+        self.conn.rollback()
+        
+    def close(self):
+        self.conn.close()
+        
+    def __getattr__(self, name):
+        return getattr(self.conn, name)
 
 def get_connection():
-    """Retorna una conexión a la base de datos SQLite."""
-    conn = sqlite3.connect(DATABASE_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Retorna una conexión a la base de datos configurada (SQLite u Oracle)."""
+    if DB_TYPE == "oracle":
+        import oracledb
+        oracledb.defaults.fetch_lobs = False
+        if ORACLE_DSN:
+            conn = oracledb.connect(user=ORACLE_USER, password=ORACLE_PASSWORD, dsn=ORACLE_DSN)
+        else:
+            dsn = f"{ORACLE_HOST}:{ORACLE_PORT}/{ORACLE_SERVICE}"
+            conn = oracledb.connect(user=ORACLE_USER, password=ORACLE_PASSWORD, dsn=dsn)
+        return ConnectionWrapper(conn)
+    else:
+        conn = sqlite3.connect(DATABASE_FILE)
+        conn.row_factory = sqlite3.Row
+        return ConnectionWrapper(conn)
 
 def init_db():
     """Inicializa la base de datos creando las tablas del stack de Osinergmin si no existen."""
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Tabla de expedientes (conforme a stack.md)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS expedientes (
-        id VARCHAR(36) PRIMARY KEY,
-        numero_expediente VARCHAR(50) UNIQUE NOT NULL,
-        datos_siged TEXT, -- JSON con metadatos de SIGED
-        fecha_consulta TIMESTAMP,
-        usuario_id VARCHAR(36)
-    )
-    """)
-    
-    # Tabla de procesos (conforme a stack.md)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS procesos (
-        id VARCHAR(36) PRIMARY KEY,
-        expediente_id VARCHAR(36) REFERENCES expedientes(id),
-        tipo_proceso VARCHAR(30),
-        estado VARCHAR(20),
-        datos_extraidos TEXT, -- JSON con datos técnicos del TDR (objeto, plazo, etc)
-        datos_administrativos TEXT, -- JSON con nomenclatura, cronograma, valor estimado, etc
-        plantilla_usada VARCHAR(100),
-        documento_generado_url TEXT,
-        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
-    # Tabla de auditoría para trazabilidad de usuario (RNF-1)
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS auditoria (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        usuario_id VARCHAR(100),
-        accion VARCHAR(100),
-        numero_expediente VARCHAR(50),
-        detalles TEXT,
-        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-    
+    if DB_TYPE == "oracle":
+        import oracledb
+        
+        # Tabla de expedientes
+        try:
+            cursor.execute("""
+            CREATE TABLE expedientes (
+                id VARCHAR2(36) PRIMARY KEY,
+                numero_expediente VARCHAR2(50) UNIQUE NOT NULL,
+                datos_siged CLOB, -- JSON con metadatos de SIGED
+                fecha_consulta TIMESTAMP,
+                usuario_id VARCHAR2(36)
+            )
+            """)
+        except oracledb.DatabaseError as e:
+            error_obj, = e.args
+            if error_obj.code != 955: # ORA-00955: name is already used by an existing object
+                raise
+                
+        # Tabla de procesos
+        try:
+            cursor.execute("""
+            CREATE TABLE procesos (
+                id VARCHAR2(36) PRIMARY KEY,
+                expediente_id VARCHAR2(36) REFERENCES expedientes(id),
+                tipo_proceso VARCHAR2(30),
+                estado VARCHAR2(20),
+                datos_extraidos CLOB, -- JSON con datos técnicos del TDR (objeto, plazo, etc)
+                datos_administrativos CLOB, -- JSON con nomenclatura, cronograma, valor estimado, etc
+                plantilla_usada VARCHAR2(100),
+                documento_generado_url VARCHAR2(1000),
+                creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
+        except oracledb.DatabaseError as e:
+            error_obj, = e.args
+            if error_obj.code != 955:
+                raise
+                
+        # Tabla de auditoría para trazabilidad de usuario (RNF-1)
+        try:
+            cursor.execute("""
+            CREATE TABLE auditoria (
+                id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                usuario_id VARCHAR2(100),
+                accion VARCHAR2(100),
+                numero_expediente VARCHAR2(50),
+                detalles CLOB,
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
+        except oracledb.DatabaseError as e:
+            error_obj, = e.args
+            if error_obj.code != 955:
+                raise
+    else:
+        # Tabla de expedientes (conforme a stack.md)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS expedientes (
+            id VARCHAR(36) PRIMARY KEY,
+            numero_expediente VARCHAR(50) UNIQUE NOT NULL,
+            datos_siged TEXT, -- JSON con metadatos de SIGED
+            fecha_consulta TIMESTAMP,
+            usuario_id VARCHAR(36)
+        )
+        """)
+        
+        # Tabla de procesos (conforme a stack.md)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS procesos (
+            id VARCHAR(36) PRIMARY KEY,
+            expediente_id VARCHAR(36) REFERENCES expedientes(id),
+            tipo_proceso VARCHAR(30),
+            estado VARCHAR(20),
+            datos_extraidos TEXT, -- JSON con datos técnicos del TDR (objeto, plazo, etc)
+            datos_administrativos TEXT, -- JSON con nomenclatura, cronograma, valor estimado, etc
+            plantilla_usada VARCHAR(100),
+            documento_generado_url TEXT,
+            creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
+        # Tabla de auditoría para trazabilidad de usuario (RNF-1)
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS auditoria (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario_id VARCHAR(100),
+            accion VARCHAR(100),
+            numero_expediente VARCHAR(50),
+            detalles TEXT,
+            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
     conn.commit()
     
     # Pre-poblar con datos mock de Osinergmin si está vacío (RNF-4)
@@ -173,7 +328,7 @@ def init_db():
                 datos_siged = json.dumps({"asunto": asunto, "tdr": tdr_nom, "responsable": resp})
                 cursor.execute(
                     "INSERT INTO expedientes (id, numero_expediente, datos_siged, fecha_consulta, usuario_id) VALUES (?, ?, ?, ?, ?)",
-                    (exp_id, num_exp, datos_siged, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), resp)
+                    (exp_id, num_exp, datos_siged, get_now_value(), resp)
                 )
                 
                 proc_id = str(uuid.uuid4())
@@ -187,8 +342,8 @@ def init_db():
                         json.dumps(t_data),
                         json.dumps(a_data),
                         plant,
-                        datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        get_now_value(),
+                        get_now_value()
                     )
                 )
             conn.commit()
@@ -220,7 +375,7 @@ def save_or_update_process(numero_expediente, asunto, tdr_nombre, plantilla, dat
                 UPDATE expedientes 
                 SET datos_siged = ?, fecha_consulta = ? 
                 WHERE id = ?
-            """, (datos_siged, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), expediente_id))
+            """, (datos_siged, get_now_value(), expediente_id))
         else:
             expediente_id = str(uuid.uuid4())
             datos_siged = json.dumps({
@@ -231,7 +386,7 @@ def save_or_update_process(numero_expediente, asunto, tdr_nombre, plantilla, dat
             cursor.execute("""
                 INSERT INTO expedientes (id, numero_expediente, datos_siged, fecha_consulta, usuario_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (expediente_id, numero_expediente, datos_siged, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), responsable))
+            """, (expediente_id, numero_expediente, datos_siged, get_now_value(), responsable))
             
         # 2. Verificar si ya existe un proceso asociado a este expediente
         cursor.execute("SELECT id FROM procesos WHERE expediente_id = ?", (expediente_id,))
@@ -252,7 +407,7 @@ def save_or_update_process(numero_expediente, asunto, tdr_nombre, plantilla, dat
                 datos_extraidos_json, 
                 datos_admin_json, 
                 plantilla, 
-                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                get_now_value(),
                 proceso_id
             ))
         else:
@@ -268,8 +423,8 @@ def save_or_update_process(numero_expediente, asunto, tdr_nombre, plantilla, dat
                 datos_extraidos_json,
                 datos_admin_json,
                 plantilla,
-                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                get_now_value(),
+                get_now_value()
             ))
             
         conn.commit()
@@ -330,18 +485,24 @@ def get_all_processes_history():
         datos_admin = json.loads(r["datos_administrativos"]) if r["datos_administrativos"] else {}
         
         # Formatear fechas para la UI
-        # SQLite timestamps suelen ser YYYY-MM-DD HH:MM:SS
+        # SQLite timestamps suelen ser YYYY-MM-DD HH:MM:SS, Oracle son objetos datetime
         try:
-            creacion_dt = datetime.strptime(r["creado_en"], '%Y-%m-%d %H:%M:%S')
-            creacion_str = creacion_dt.strftime('%d/%m/%Y')
+            if isinstance(r["creado_en"], datetime):
+                creacion_str = r["creado_en"].strftime('%d/%m/%Y')
+            else:
+                creacion_dt = datetime.strptime(r["creado_en"], '%Y-%m-%d %H:%M:%S')
+                creacion_str = creacion_dt.strftime('%d/%m/%Y')
         except:
-            creacion_str = r["creado_en"]
+            creacion_str = str(r["creado_en"]) if r["creado_en"] else ""
             
         try:
-            modif_dt = datetime.strptime(r["actualizado_en"], '%Y-%m-%d %H:%M:%S')
-            modif_str = modif_dt.strftime('%d/%m/%Y')
+            if isinstance(r["actualizado_en"], datetime):
+                modif_str = r["actualizado_en"].strftime('%d/%m/%Y')
+            else:
+                modif_dt = datetime.strptime(r["actualizado_en"], '%Y-%m-%d %H:%M:%S')
+                modif_str = modif_dt.strftime('%d/%m/%Y')
         except:
-            modif_str = r["actualizado_en"]
+            modif_str = str(r["actualizado_en"]) if r["actualizado_en"] else ""
             
         history.append({
             "expediente": r["expediente"],

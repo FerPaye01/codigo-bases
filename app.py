@@ -71,64 +71,90 @@ st.set_page_config(
 # Estilo CSS premium empresarial con colores de Osinergmin y diseño de flujo multipaso
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
     
-    html, body, [class*="css"], .stMarkdown {
-        font-family: 'Plus Jakarta Sans', sans-serif;
+    /* Variables de Diseño Oficiales de Osinergmin */
+    :root {
+        --primary-color: #0039aa;
+        --primary-500: #0039aa;
+        --primary-color-text: #ffffff;
+        --surface-900: #101828;
+        --yellow-osinergmin: #fbe122;
+        --naranja-osinergmin: #f6a229;
+        --celeste-osinergmin: #03a9f4;
+        --verde-osinergmin: #35cc29;
+        --dorado-osinergmin: #bfab49;
+        --celeste-claro-osinergmin: #d2f7fc;
+        --gris-claro-osinergmin: #f2f2f2;
+    }
+
+    /* Aplicación estricta de Tipografía Poppins */
+    html, body, [class*="css"], .stMarkdown, .stText, .stButton, input, select, textarea, [data-testid="stHeader"] {
+        font-family: 'Poppins', sans-serif !important;
     }
     h1, h2, h3, h4, h5, h6 {
-        font-family: 'Outfit', sans-serif;
-        font-weight: 600;
-        color: #0c4a6e; /* Azul Osinergmin */
+        font-family: 'Poppins', sans-serif !important;
+        font-weight: 600 !important;
+        color: #0039aa !important; /* Azul Osinergmin (Primary) */
     }
 
-    /* Fondo de la App */
+    /* Fondo de la App con Celeste Claro de Osinergmin en degradé */
     .stApp {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        background: linear-gradient(135deg, #ffffff 0%, #d2f7fc 100%) !important;
     }
 
-    /* Sidebar Estilizado */
+    /* Sidebar Estilizado con Surface 900 (Color institucional oscuro) */
     [data-testid="stSidebar"] {
-        background-color: #0f172a !important; /* Slate Oscuro */
+        background-color: #101828 !important; /* --surface-900 */
         border-right: 1px solid #1e293b;
     }
     [data-testid="stSidebar"] * {
         color: #f1f5f9 !important;
     }
     [data-testid="stSidebar"] .stRadio > label {
-        color: #94a3b8 !important;
+        color: #fbe122 !important; /* Amarillo Osinergmin para destacar */
         font-weight: 600;
+    }
+
+    /* Elemento Fijo: Franja combinada Azul y Amarilla (Línea de Identidad) */
+    .linea-identidad-osinergmin {
+        height: 25px; /* Entre 21px y 30px según la regla */
+        width: 100%;
+        background: linear-gradient(90deg, #0039aa 0%, #0039aa 65%, #fbe122 65%, #fbe122 100%);
+        border-radius: 4px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 57, 170, 0.1);
     }
 
     /* Tarjetas y Contenedores Premium */
     .metric-card {
         background: #ffffff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #f2f2f2; /* Gris Claro */
         border-radius: 12px;
         padding: 18px;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.02);
+        box-shadow: 0 4px 12px rgba(16, 24, 40, 0.04);
         transition: all 0.2s ease-in-out;
         margin-bottom: 12px;
     }
     .metric-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
-        border-color: #0284c7;
+        box-shadow: 0 8px 20px rgba(16, 24, 40, 0.08);
+        border-color: #0039aa; /* Azul Osinergmin */
     }
 
     /* Alertas */
     .alert-panel {
-        background-color: #fffbeb;
-        border-left: 4px solid #d97706;
+        background-color: #fffdf0;
+        border-left: 4px solid #f6a229; /* Naranja Osinergmin */
         border-radius: 8px;
         padding: 12px;
         margin-bottom: 12px;
-        color: #78350f;
+        color: #7c2d12;
         font-size: 0.9rem;
     }
     .success-panel {
         background-color: #f0fdf4;
-        border-left: 4px solid #16a34a;
+        border-left: 4px solid #35cc29; /* Verde Osinergmin */
         border-radius: 8px;
         padding: 12px;
         margin-bottom: 12px;
@@ -153,8 +179,8 @@ st.markdown("""
         background: #ffffff;
         padding: 15px;
         border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.01);
+        border: 1px solid #f2f2f2; /* Gris Claro */
+        box-shadow: 0 2px 8px rgba(16, 24, 40, 0.02);
     }
     .step-item {
         text-align: center;
@@ -165,16 +191,16 @@ st.markdown("""
         color: #94a3b8;
     }
     .step-item.active {
-        color: #0284c7;
+        color: #0039aa; /* Azul Osinergmin */
     }
     .step-item.completed {
-        color: #16a34a;
+        color: #35cc29; /* Verde Osinergmin */
     }
     .step-number {
         width: 28px;
         height: 28px;
         border-radius: 50%;
-        background-color: #e2e8f0;
+        background-color: #f2f2f2; /* Gris Claro */
         color: #64748b;
         display: flex;
         align-items: center;
@@ -184,11 +210,11 @@ st.markdown("""
         font-weight: bold;
     }
     .step-item.active .step-number {
-        background-color: #0284c7;
+        background-color: #0039aa; /* Azul Osinergmin */
         color: white;
     }
     .step-item.completed .step-number {
-        background-color: #16a34a;
+        background-color: #35cc29; /* Verde Osinergmin */
         color: white;
     }
 
@@ -208,9 +234,33 @@ st.markdown("""
 
     /* Botones */
     .stButton>button {
-        border-radius: 8px;
-        font-weight: 600;
-        transition: all 0.2s ease;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    /* Botón Primario: Azul Osinergmin con texto blanco */
+    div.stButton > button[kind="primary"] {
+        background-color: #0039aa !important;
+        color: #ffffff !important;
+        border: 1px solid #0039aa !important;
+    }
+    div.stButton > button[kind="primary"]:hover {
+        background-color: #002b80 !important;
+        border-color: #002b80 !important;
+        box-shadow: 0 4px 12px rgba(0, 57, 170, 0.2) !important;
+    }
+
+    /* Botón Secundario: Blanco/Gris con borde y texto Azul */
+    div.stButton > button[kind="secondary"] {
+        background-color: #ffffff !important;
+        color: #0039aa !important;
+        border: 1px solid #0039aa !important;
+    }
+    div.stButton > button[kind="secondary"]:hover {
+        background-color: #f2f2f2 !important;
+        border-color: #002b80 !important;
+        color: #002b80 !important;
     }
     
     /* Indicador de confianza */
@@ -221,14 +271,14 @@ st.markdown("""
         border-radius: 4px;
         display: inline-block;
     }
-    .conf-green { background-color: #dcfce7; color: #15803d; }
-    .conf-orange { background-color: #fef3c7; color: #b45309; }
-    .conf-red { background-color: #fee2e2; color: #b91c1c; }
+    .conf-green { background-color: #e6fced; color: #1b6615; border: 1px solid #35cc29; }
+    .conf-orange { background-color: #fff9f0; color: #a16207; border: 1px solid #f6a229; }
+    .conf-red { background-color: #fee2e2; color: #b91c1c; border: 1px solid #ef4444; }
 
     /* Visor del TDR */
     .tdr-viewer {
-        background-color: #f8fafc;
-        border: 1px solid #cbd5e1;
+        background-color: #f2f2f2;
+        border: 1px solid #d2f7fc;
         border-radius: 8px;
         padding: 15px;
         font-family: 'Courier New', Courier, monospace;
@@ -374,12 +424,7 @@ def render_step_indicator(current_step):
             
         num_content = "✓" if step_num < current_step else str(step_num)
         
-        html += f"""
-        <div class="step-item{active_class}">
-            <div class="step-number">{num_content}</div>
-            <div style="margin-top: 4px;">{name}</div>
-        </div>
-        """
+        html += f'<div class="step-item{active_class}"><div class="step-number">{num_content}</div><div style="margin-top: 4px;">{name}</div></div>'
     html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
 
@@ -387,9 +432,10 @@ def render_step_indicator(current_step):
 # MENU LATERAL - INFORMACIÓN CORPORATIVA
 # ==============================================================================
 with st.sidebar:
+    st.markdown('<div class="linea-identidad-osinergmin" style="height: 25px; margin-bottom: 15px;"></div>', unsafe_allow_html=True)
     st.markdown("<h2 style='color: white; margin-top: 5px;'>Asistente IA</h2>", unsafe_allow_html=True)
     st.caption("Fase 1: Generación de Bases Estándar")
-    st.markdown("<hr style='border-color: #334155; margin: 10px 0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border-color: #1e293b; margin: 10px 0;'>", unsafe_allow_html=True)
     
     # Barra lateral de accesos directos
     st.markdown("### Navegación Rápida")
@@ -437,7 +483,8 @@ with st.sidebar:
         """, unsafe_allow_html=True)
 
 
-# Renderizar el indicador de progreso multipaso a nivel global en la UI
+# Renderizar la franja de identidad corporativa y el indicador de progreso multipaso a nivel global en la UI
+st.markdown('<div class="linea-identidad-osinergmin"></div>', unsafe_allow_html=True)
 render_step_indicator(st.session_state.current_step)
 
 # ==============================================================================
@@ -451,11 +498,55 @@ if st.session_state.current_step == 1:
     
     with col_e1:
         st.markdown("#### Búsqueda en SIGED")
-        expediente_input = st.text_input(
-            "Número de expediente SIGED (11 dígitos):", 
-            value=st.session_state.expediente_input, 
-            placeholder="Ingrese e.g. 20260000982"
+        
+        # 1. Lista de expedientes sugeridos/mock y del historial de la BD
+        expedientes_sugeridos = {
+            "20260000982": "20260000982 - Consultoría Ciberseguridad (TDR-GSTI-2026-004)",
+            "20260000411": "20260000411 - Servidores Alta Disponibilidad (TDR-GSTI-2026-011)"
+        }
+        
+        try:
+            historial = database.get_all_processes_history()
+            for item in historial:
+                exp = item["expediente"]
+                if exp not in expedientes_sugeridos:
+                    expedientes_sugeridos[exp] = f"{exp} - {item.get('plantilla', 'Bases Registradas')}"
+        except Exception:
+            pass
+            
+        opciones_desplegable = ["-- Seleccione o busque un expediente --"] + list(expedientes_sugeridos.values()) + ["Otro (Ingresar número manualmente...)"]
+        
+        # Encontrar índice de selección predeterminado
+        default_idx = 0
+        if st.session_state.expediente_input:
+            encontrado = False
+            for idx, opt in enumerate(opciones_desplegable):
+                if opt.startswith(st.session_state.expediente_input):
+                    default_idx = idx
+                    encontrado = True
+                    break
+            if not encontrado:
+                default_idx = len(opciones_desplegable) - 1 # "Otro"
+                
+        seleccion_expediente = st.selectbox(
+            "Buscar o seleccionar expediente:",
+            options=opciones_desplegable,
+            index=default_idx,
+            help="Escriba parte del número de expediente o del asunto para filtrar la lista predictivamente."
         )
+        
+        # Determinar el valor final de expediente_input a validar
+        if seleccion_expediente == "Otro (Ingresar número manualmente...)":
+            expediente_input = st.text_input(
+                "Ingrese número de expediente SIGED (11 dígitos):", 
+                value=st.session_state.expediente_input if st.session_state.expediente_input not in expedientes_sugeridos else "", 
+                placeholder="Ingrese e.g. 20260000982",
+                max_chars=11
+            )
+        elif seleccion_expediente != "-- Seleccione o busque un expediente --":
+            expediente_input = seleccion_expediente.split(" - ")[0].strip()
+        else:
+            expediente_input = ""
         
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
@@ -629,14 +720,39 @@ if st.session_state.current_step == 1:
                     with log_placeholder.container():
                         st.markdown('<div class="aws-panel">👤 <b>[Paso 1]</b> Portal recibe N° Expediente: ' + expediente_input + '</div>', unsafe_allow_html=True)
                         time.sleep(0.5)
-                        st.markdown('<div class="aws-panel">🔄 <b>[Paso 2]</b> Solicitando documento TDR al Sistema SIGED (API SIGED)...</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="aws-panel">🔄 <b>[Paso 2]</b> Solicitando documento TDR al Sistema SIGED (API REST SIGED)...</div>', unsafe_allow_html=True)
+                        
+                        # Consultar metadatos desde el backend FastAPI que usa SIGEDAdapter
+                        siged_meta = None
+                        try:
+                            siged_resp = requests.get(f"http://127.0.0.1:8000/siged/consultar/{expediente_input}", timeout=10)
+                            if siged_resp.status_code == 200:
+                                siged_meta = siged_resp.json()["data"]
+                            else:
+                                st.error("Expediente no encontrado en la API REST de SIGED.")
+                        except Exception as e:
+                            st.error(f"Error al conectar con la API del Backend (SIGED): {e}")
+                        
                         time.sleep(0.5)
-                        st.markdown('<div class="aws-panel">📄 <b>[Paso 3]</b> SIGED proporciona archivo digital del TDR en formato PDF/DOCX</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="aws-panel">📄 <b>[Paso 3]</b> SIGED proporciona archivo digital del TDR en formato PDF/DOCX (Descarga REST)</div>', unsafe_allow_html=True)
+                        
+                        # Descargar contenido del TDR desde la API de SIGED
+                        tdr_content = ""
+                        if siged_meta:
+                            try:
+                                tdr_resp = requests.get(f"http://127.0.0.1:8000/siged/descargar/{siged_meta['tdr']}", timeout=10)
+                                if tdr_resp.status_code == 200:
+                                    tdr_content = tdr_resp.json()["content"]
+                            except Exception as e:
+                                print(f"Error al descargar contenido del TDR desde la API: {e}")
+                                
+                        if not tdr_content:
+                            tdr_content = MOCK_TDRS.get(expediente_input)
+                            
                         time.sleep(0.5)
                         st.markdown('<div class="aws-panel">🧠 <b>[Paso 4]</b> Enviando archivo al backend FastAPI + Ollama (Gemma 3) para extracción técnica estructurada (RF-3)...</div>', unsafe_allow_html=True)
                         
                         # Realizar la extracción llamando al backend FastAPI
-                        tdr_content = MOCK_TDRS.get(expediente_input)
                         ext_success = False
                         try:
                             api_resp = requests.post(
@@ -655,35 +771,22 @@ if st.session_state.current_step == 1:
                         time.sleep(0.5)
                     log_placeholder.empty()
 
-                    if ext_success:
+                    if ext_success and siged_meta:
                         st.session_state.expediente_valido = True
                         st.session_state.expediente_error = ""
+                        st.session_state.expediente_data = siged_meta
+                        st.session_state.tdr_nombre = siged_meta["tdr"]
                         
+                        # Mapeo de plantillas sugeridas
                         if expediente_input == "20260000982":
-                            st.session_state.expediente_data = {
-                                "numero": "20260000982",
-                                "asunto": "Servicio de Consultoría para la Gestión y Mitigación de Riesgos Informáticos en Osinergmin",
-                                "tdr": "TDR_Consultoria_Ciberseguridad_2026.pdf",
-                                "fecha": "10/06/2026"
-                            }
-                            st.session_state.tdr_nombre = "TDR_Consultoria_Ciberseguridad_2026.pdf"
                             st.session_state.plantilla_sugerida = "Servicios - Normal"
-                            if not st.session_state.plantilla_final:
-                                st.session_state.plantilla_final = "Servicios - Normal"
                             st.session_state.nomenclatura = "AS-002-2026-OSINERGMIN"
-                            
-                        elif expediente_input == "20260000411":
-                            st.session_state.expediente_data = {
-                                "numero": "20260000411",
-                                "asunto": "Adquisición de Servidores de Alta Disponibilidad para el Data Center de Osinergmin",
-                                "tdr": "TDR_Adquisicion_Servidores_2026.pdf",
-                                "fecha": "05/06/2026"
-                            }
-                            st.session_state.tdr_nombre = "TDR_Adquisicion_Servidores_2026.pdf"
+                        else:
                             st.session_state.plantilla_sugerida = "Bienes - Normal"
-                            if not st.session_state.plantilla_final:
-                                st.session_state.plantilla_final = "Bienes - Normal"
                             st.session_state.nomenclatura = "LP-001-2026-OSINERGMIN"
+                            
+                        if not st.session_state.plantilla_final:
+                            st.session_state.plantilla_final = st.session_state.plantilla_sugerida
                         
                         # Poblar con los datos REALMENTE extraídos por el LLM Gemma 3 local
                         st.session_state.datos_tecnicos = {
@@ -726,14 +829,7 @@ if st.session_state.current_step == 1:
         if st.session_state.expediente_valido and st.session_state.expediente_data is not None:
             data = st.session_state.expediente_data
             st.markdown("#### Resumen del Expediente")
-            st.markdown(f"""
-            <div class="metric-card">
-                <b>Número de expediente:</b> {data['numero']}<br>
-                <b>Nombre / Asunto:</b> {data['asunto']}<br>
-                <b>Documento TDR identificado:</b> <code style="color:#0284c7;">{data['tdr']}</code><br>
-                <b>Fecha de registro:</b> {data['fecha']}
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="metric-card"><b>Número de expediente:</b> {data["numero"]}<br><b>Nombre / Asunto:</b> {data["asunto"]}<br><b>Documento TDR identificado:</b> <code style="color:#0039aa;">{data["tdr"]}</code><br><b>Fecha de registro:</b> {data["fecha"]}</div>', unsafe_allow_html=True)
             
             # Botón para ir al paso 2
             if st.button("Continuar a Selección de Plantilla ➡️", use_container_width=True):
@@ -786,11 +882,7 @@ elif st.session_state.current_step == 2:
         
         # Alerta si cambia la sugerida
         if plantilla_manual != st.session_state.plantilla_sugerida:
-            st.markdown("""
-            <div class="alert-panel">
-                ⚠️ <b>Alerta:</b> La plantilla seleccionada manualmente será usada para la generación del documento.
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown('<div class="alert-panel">⚠️ <b>Alerta:</b> La plantilla seleccionada manualmente será usada para la generación del documento.</div>', unsafe_allow_html=True)
             
         # Botones de navegación
         col_btn_p1, col_btn_p2 = st.columns(2)
@@ -810,7 +902,7 @@ elif st.session_state.current_step == 2:
     with col_p2:
         st.markdown("#### Detalle Legal de la Plantilla")
         st.markdown("""
-        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; font-size: 0.85rem;">
+        <div style="background-color: #f2f2f2; border: 1px solid #d2f7fc; border-radius: 8px; padding: 15px; font-size: 0.85rem;">
             <strong>Estructura legal de Bases Estándar:</strong><br>
             Las plantillas son estructuradas en base a las directivas aprobadas por el Organismo Supervisor de las Contrataciones del Estado (OSCE) vigentes para Osinergmin.
             <br><br>
@@ -857,19 +949,11 @@ elif st.session_state.current_step == 3:
         st.markdown("##### Indicadores de Confianza en Extracción (AWS OCR/NLP)")
         col_c1, col_c2, col_c3 = st.columns(3)
         with col_c1:
-            st.markdown(f"""
-            • Objeto: <span class="confidence-badge {conf_obj_class}">{conf_obj_txt}</span><br>
-            • Plazo: <span class="confidence-badge {conf_plz_class}">{conf_plz_txt}</span>
-            """, unsafe_allow_html=True)
+            st.markdown(f'• Objeto: <span class="confidence-badge {conf_obj_class}">{conf_obj_txt}</span><br>• Plazo: <span class="confidence-badge {conf_plz_class}">{conf_plz_txt}</span>', unsafe_allow_html=True)
         with col_c2:
-            st.markdown(f"""
-            • Sistema: <span class="confidence-badge {conf_sis_class}">{conf_sis_txt}</span><br>
-            • Requisitos: <span class="confidence-badge {conf_req_class}">{conf_req_txt}</span>
-            """, unsafe_allow_html=True)
+            st.markdown(f'• Sistema: <span class="confidence-badge {conf_sis_class}">{conf_sis_txt}</span><br>• Requisitos: <span class="confidence-badge {conf_req_class}">{conf_req_txt}</span>', unsafe_allow_html=True)
         with col_c3:
-            st.markdown(f"""
-            • Factores: <span class="confidence-badge {conf_fac_class}">{conf_fac_txt}</span>
-            """, unsafe_allow_html=True)
+            st.markdown(f'• Factores: <span class="confidence-badge {conf_fac_class}">{conf_fac_txt}</span>', unsafe_allow_html=True)
         st.caption("🟢 **Verde**: Datos completos. 🟡 **Naranja**: Datos breves (revisar). 🔴 **Rojo**: Vacío o requiere ingreso manual.")
             
         # RAG / Qdrant Clause Recommendations (Local Vector Search)
@@ -898,13 +982,7 @@ elif st.session_state.current_step == 3:
                                     st.info("No se encontraron cláusulas similares para este criterio.")
                                 else:
                                     for idx, rec in enumerate(recommendations):
-                                        st.markdown(f"""
-                                        <div style="background-color: #f0fdf4; border-left: 3px solid #16a34a; padding: 10px; border-radius: 6px; margin-bottom: 10px;">
-                                            <b style="color: #14532d;">Sugerencia #{idx+1}: {rec['tipo_clausula']}</b><br>
-                                            <span style="font-size: 0.85rem; color: #1e293b;">{rec['texto']}</span><br>
-                                            <small style="color: #64748b;">Fuente: {rec['fuente']} | Relevancia: {rec['score']:.2%}</small>
-                                        </div>
-                                        """, unsafe_allow_html=True)
+                                        st.markdown(f'<div style="background-color: #f0fdf4; border-left: 3px solid #35cc29; padding: 10px; border-radius: 6px; margin-bottom: 10px;"><b style="color: #14532d;">Sugerencia #{idx+1}: {rec["tipo_clausula"]}</b><br><span style="font-size: 0.85rem; color: #1e293b;">{rec["texto"]}</span><br><small style="color: #64748b;">Fuente: {rec["fuente"]} | Relevancia: {rec["score"]:.2%}</small></div>', unsafe_allow_html=True)
                             else:
                                 st.error(f"Error al conectar con la base de vectores: {resp.text}")
                         except Exception as ex:
@@ -960,7 +1038,7 @@ elif st.session_state.current_step == 3:
         else:
             tdr_display = tdr_text
             
-        st.markdown(f'<div class="tdr-viewer"><pre style="color:#0f172a; white-space: pre-wrap;">{tdr_display}</pre></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="tdr-viewer"><pre style="color:#101828; white-space: pre-wrap;">{tdr_display}</pre></div>', unsafe_allow_html=True)
 
 # ==============================================================================
 # PANTALLA 4: INGRESO DE DATOS ADMINISTRATIVOS
@@ -1159,7 +1237,7 @@ elif st.session_state.current_step == 5:
     with col_v1:
         st.markdown("#### Resumen del Expediente")
         st.markdown(f"""
-        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; font-size: 0.9rem;">
+        <div style="background-color: #f2f2f2; border: 1px solid #d2f7fc; border-radius: 8px; padding: 15px; font-size: 0.9rem;">
             • <b>Expediente SIGED:</b> {st.session_state.expediente_input}<br>
             • <b>Plantilla utilizada:</b> {st.session_state.plantilla_final}<br>
             • <b>TDR fuente:</b> {st.session_state.tdr_nombre}<br>
@@ -1171,11 +1249,7 @@ elif st.session_state.current_step == 5:
         st.markdown("#### Estado del Documento:")
         st.markdown('<div class="success-panel"><b>✓ Borrador generado</b> | Listo para descargar</div>', unsafe_allow_html=True)
         
-        st.markdown("""
-        <div class="alert-panel">
-            ⚠️ <b>Advertencia de revisión humana:</b> Este documento es un borrador y debe ser revisado por el área responsable de Osinergmin antes de su publicación oficial.
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div class="alert-panel">⚠️ <b>Advertencia de revisión humana:</b> Este documento es un borrador y debe ser revisado por el área responsable de Osinergmin antes de su publicación oficial.</div>', unsafe_allow_html=True)
         
         # [Paso 10] Checklist de Validación
         st.markdown("#### 📋 Checklist de Validación (Paso 10)")
@@ -1191,17 +1265,9 @@ elif st.session_state.current_step == 5:
         checklist_completado = check_objeto and check_plazo and check_cronograma and check_calificacion and check_evaluacion and check_financiamiento
         
         if not checklist_completado:
-            st.markdown("""
-            <div class="error-panel" style="margin-top:10px;">
-                🔒 <b>Acceso Bloqueado (Paso 11 - Revisa/Confirma):</b> Debe completar todos los ítems del Checklist de Validación técnica para habilitar la descarga y cierre del expediente.
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown('<div class="error-panel" style="margin-top:10px;">🔒 <b>Acceso Bloqueado (Paso 11 - Revisa/Confirma):</b> Debe completar todos los ítems del Checklist de Validación técnica para habilitar la descarga y cierre del expediente.</div>', unsafe_allow_html=True)
         else:
-            st.markdown("""
-            <div class="success-panel" style="margin-top:10px;">
-                🔓 <b>Validación Exitosa (Paso 11):</b> El borrador ha sido aprobado por el usuario Osinergmin. Se ha habilitado la descarga e integración (Paso 12).
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown('<div class="success-panel" style="margin-top:10px;">🔓 <b>Validación Exitosa (Paso 11):</b> El borrador ha sido aprobado por el usuario Osinergmin. Se ha habilitado la descarga e integración (Paso 12).</div>', unsafe_allow_html=True)
 
         st.markdown("#### Acciones Disponibles")
         col_va1, col_va2 = st.columns(2)
@@ -1392,20 +1458,11 @@ elif st.session_state.current_step == 6:
         for idx, row in df_historial.iterrows():
             col_row1, col_row2, col_row3 = st.columns([3, 1, 1.5])
             with col_row1:
-                st.markdown(f"""
-                <div style="background-color: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-                    <b>Expediente:</b> <code>{row['expediente']}</code> | <b>Plantilla:</b> {row['plantilla']}<br>
-                    <span style="font-size: 0.8rem; color:#64748b;"><b>Creación:</b> {row['creacion']} | <b>Modificación:</b> {row['modificacion']} | <b>Responsable:</b> {row['responsable']}</span>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f'<div style="background-color: white; border: 1px solid #f2f2f2; border-radius: 8px; padding: 12px; margin-bottom: 8px;"><b>Expediente:</b> <code>{row["expediente"]}</code> | <b>Plantilla:</b> {row["plantilla"]}<br><span style="font-size: 0.8rem; color:#64748b;"><b>Creación:</b> {row["creacion"]} | <b>Modificación:</b> {row["modificacion"]} | <b>Responsable:</b> {row["responsable"]}</span></div>', unsafe_allow_html=True)
             with col_row2:
-                badge_color = "#e0f2fe" if row['estado'] == "Borrador generado" else ("#fef3c7" if row['estado'] == "En progreso" else "#dcfce7")
-                text_color = "#0369a1" if row['estado'] == "Borrador generado" else ("#b45309" if row['estado'] == "En progreso" else "#15803d")
-                st.markdown(f"""
-                <div style="text-align: center; margin-top: 10px;">
-                    <span style="background-color: {badge_color}; color: {text_color}; font-weight: bold; font-size: 0.8rem; padding: 5px 10px; border-radius: 12px;">{row['estado']}</span>
-                </div>
-                """, unsafe_allow_html=True)
+                badge_color = "#d2f7fc" if row['estado'] == "Borrador generado" else ("#fff9f0" if row['estado'] == "En progreso" else "#e6fced")
+                text_color = "#0039aa" if row['estado'] == "Borrador generado" else ("#f6a229" if row['estado'] == "En progreso" else "#1b6615")
+                st.markdown(f'<div style="text-align: center; margin-top: 10px;"><span style="background-color: {badge_color}; color: {text_color}; font-weight: bold; font-size: 0.8rem; padding: 5px 10px; border-radius: 12px;">{row["estado"]}</span></div>', unsafe_allow_html=True)
             with col_row3:
                 col_act1, col_act2 = st.columns(2)
                 with col_act1:

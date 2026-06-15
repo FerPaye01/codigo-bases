@@ -3,7 +3,7 @@ import requests
 import sqlite3
 import os
 
-sys.path.append("/data/proyectos/proyecto-bases")
+sys.path.append(".")
 import database
 
 def run_test():
@@ -33,7 +33,7 @@ def run_test():
     try:
         resp = requests.post("http://127.0.0.1:8000/generate_docx", json=payload, timeout=10)
         if resp.status_code == 200:
-            output_file = "/home/ferpayec01/.gemini/antigravity-cli/brain/f511e89c-0447-41ea-aa21-9ad09417648a/scratch/output_bienes_normal.docx"
+            output_file = "output_bienes_normal.docx"
             with open(output_file, "wb") as f:
                 f.write(resp.content)
             print(f"✓ Word document successfully generated and saved to {output_file}")

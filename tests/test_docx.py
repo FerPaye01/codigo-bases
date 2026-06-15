@@ -27,7 +27,7 @@ def test_docx():
         print(f"Status Code: {resp.status_code}")
         if resp.status_code == 200:
             print(f"Response Content Size: {len(resp.content)} bytes")
-            with open("/data/proyectos/proyecto-bases/test_output.docx", "wb") as f:
+            with open("test_output.docx", "wb") as f:
                 f.write(resp.content)
             print("Successfully wrote test_output.docx")
         else:

@@ -15,53 +15,102 @@ from docling.document_converter import DocumentConverter
 # ==============================================================================
 # INTEGRACIÓN SIGED - PATRÓN ADAPTER (Sección 3.10 de stack.md)
 # ==============================================================================
+MOCK_SIGED_DATA = {
+    "20260000982": {
+        "numero": "20260000982",
+        "asunto": "Servicio de Consultoría para la Gestión y Mitigación de Riesgos Informáticos en Osinergmin",
+        "tdr": "TDR_Consultoria_Ciberseguridad_2026.pdf",
+        "fecha": "10/06/2026",
+        "tdr_text": """TÉRMINOS DE REFERENCIA (TDR)
+CONTRATACIÓN DE SERVICIO DE CONSULTORÍA
+CÓDIGO INTERNO: TDR-GSTI-2026-004
+
+1. OBJETO DE LA CONTRATACIÓN
+Contratar un servicio de consultoría especializada para el diagnóstico, gestión y mitigación de riesgos de seguridad de la información e infraestructura de red de Osinergmin.
+
+2. PLAZO DE EJECUCIÓN
+El plazo estimado para la ejecución de las prestaciones del servicio es de 180 días calendario contados a partir del día siguiente de la firma del contrato.
+
+3. SISTEMA DE CONTRATACIÓN
+El presente proceso de selección se regirá por el sistema de Suma Alzada.
+
+4. REQUERIMIENTO COMPLETO Y ENTREGABLES
+- Entregable 1: Diagnóstico situacional de seguridad de red.
+- Entregable 2: Arquitectura de seguridad lógica y física sugerida.
+- Entregable 3: Matriz de riesgos informáticos de Osinergmin.
+- Entregable 4: Plan de contingencias y recuperación ante desastres corporativo.
+
+5. REQUISITOS DE CALIFICACIÓN
+- Facturación acumulada de la empresa consultora equivalente a 2 veces el valor estimado en consultorías similares durante los últimos 5 años.
+- Certificación ISO 27001 e ISO 9001 vigente.
+- Jefe de Proyecto: Ingeniero con certificación PMP y CISM (Certified Information Security Manager).
+
+6. PENALIDADES
+Por retraso en la entrega de informes del servicio se aplicará una penalidad de 0.20%."""
+    },
+    "20260000411": {
+        "numero": "20260000411",
+        "asunto": "Adquisición de Servidores de Alta Disponibilidad para el Data Center de Osinergmin",
+        "tdr": "TDR_Adquisicion_Servidores_2026.pdf",
+        "fecha": "05/06/2026",
+        "tdr_text": """TÉRMINOS DE REFERENCIA (TDR)
+ADQUISICIÓN DE SERVIDORES DE ALTA DISPONIBILIDAD
+CÓDIGO INTERNO: TDR-GSTI-2026-011
+
+1. OBJETO DE LA CONTRATACIÓN
+Adquisición de 4 servidores físicos de alta disponibilidad incluyendo licenciamiento y soporte por 3 años para el Data Center de Osinergmin.
+
+2. PLAZO DE EJECUCIÓN
+El plazo de entrega de los servidores físicos instalados y configurados será de 60 días calendario.
+
+3. SISTEMA DE CONTRATACIÓN
+El presente proceso de selección se regirá por el sistema de Suma Alzada.
+
+4. REQUERIMIENTO COMPLETO Y ESPECIFICACIONES
+- Servidores físicos de 64 núcleos, 512GB RAM y almacenamiento SSD enterprise en configuración cluster.
+- Soporte técnico local certificado directamente por el fabricante del hardware de los servidores.
+
+5. REQUISITOS DE CALIFICACIÓN
+- Experiencia de la empresa en la provisión de servidores y almacenamiento empresarial durante los últimos 3 años.
+- Soporte técnico local certificado directamente por el fabricante del hardware de los servidores.
+
+6. PENALIDADES
+Se aplicará la penalidad por mora establecida en el Artículo 161 del Reglamento de la Ley de Contrataciones del Estado."""
+    }
+}
+
+import requests
+
 class SIGEDAdapter:
     """
     Adaptador para la integración del Asistente de Bases con el Sistema de Gestión Documentaria (SIGED) de Osinergmin.
-    
-    ESTRATEGIAS DE INTEGRACIÓN POR ESCENARIO:
-    
-    1. ESCENARIO MVP / PRUEBAS (Implementado Actual):
-       - Se simula la existencia de expedientes utilizando un diccionario estático de TDRs en memoria 
-         indexado por claves de 11 dígitos (AAAAXXXXXXX) en el frontend.
-       - Permite el desarrollo del asistente de forma desacoplada y offline.
-       
-    2. ESCENARIO DE PRODUCCIÓN A (API REST / SOAP Oficial de Osinergmin):
-       - Si la Gerencia de Sistemas (GSTI) habilita servicios de interoperabilidad, este adaptador 
-         utilizará un cliente HTTP asíncrono (ej. httpx) o cliente SOAP (ej. zeep) con reintentos para:
-         a) Validar la existencia de un expediente mediante HTTP GET /api/v1/expedientes/{numero}.
-         b) Consultar la lista de documentos asociados al expediente.
-         c) Descargar el TDR digital (PDF o DOCX) desde el gestor documental a un almacenamiento temporal.
-         
-    3. ESCENARIO DE PRODUCCIÓN B (RPA - Robotic Process Automation con Playwright/Selenium):
-       - Si no existe API y se requiere integración automática, el adaptador instanciará un navegador 
-         headless con Playwright para emular las acciones del operador humano:
-         a) Login automatizado en la intranet de SIGED de Osinergmin.
-         b) Navegación y búsqueda del expediente usando el número de 11 dígitos.
-         c) Detección del enlace del archivo de TDR por palabra clave o tipo documental.
-         d) Descarga automática del archivo al disco del servidor para procesarlo con el OCR/NLP.
+    Utiliza llamadas reales de API REST dirigidas al simulador del SIGED.
     """
-    def __init__(self):
-        # Inicialización de clientes HTTP o controladores de navegador según configuración
-        pass
+    def __init__(self, base_url="http://127.0.0.1:8000/api/v1/siged"):
+        self.base_url = base_url
 
     def consultar_expediente(self, numero: str) -> Optional[dict]:
-        # Simulación de respuesta mock
-        if numero == "20260000982":
-            return {
-                "numero": "20260000982",
-                "asunto": "Servicio de Consultoría para la Gestión y Mitigación de Riesgos Informáticos en Osinergmin",
-                "tdr": "TDR_Consultoria_Ciberseguridad_2026.pdf",
-                "fecha": "10/06/2026"
-            }
-        elif numero == "20260000411":
-            return {
-                "numero": "20260000411",
-                "asunto": "Adquisición de Servidores de Alta Disponibilidad para el Data Center de Osinergmin",
-                "tdr": "TDR_Adquisicion_Servidores_2026.pdf",
-                "fecha": "05/06/2026"
-            }
-        return None
+        try:
+            url = f"{self.base_url}/expedientes/{numero}"
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except Exception as e:
+            print(f"Error al conectar con la API REST de SIGED (GET /expedientes): {e}")
+            return None
+
+    def descargar_tdr(self, filename: str) -> Optional[str]:
+        try:
+            url = f"{self.base_url}/documentos/{filename}"
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("content")
+            return None
+        except Exception as e:
+            print(f"Error al conectar con la API REST de SIGED (GET /documentos): {e}")
+            return None
 
 # ==============================================================================
 # LIFECYCLE / LIFESPAN DE FASTAPI
@@ -195,6 +244,46 @@ def read_root():
         "available_models_in_ollama": available_models,
         "api_docs_url": "/docs"
     }
+
+# --- Endpoint de simulación de API REST de SIGED (Simula el servidor externo) ---
+@app.get("/api/v1/siged/expedientes/{numero}")
+def external_siged_get_expediente(numero: str):
+    if numero in MOCK_SIGED_DATA:
+        data = MOCK_SIGED_DATA[numero]
+        return {
+            "numero": data["numero"],
+            "asunto": data["asunto"],
+            "tdr": data["tdr"],
+            "fecha": data["fecha"]
+        }
+    raise HTTPException(status_code=404, detail="Expediente no encontrado en el sistema SIGED")
+
+@app.get("/api/v1/siged/documentos/{filename}")
+def external_siged_get_documento(filename: str):
+    for key, data in MOCK_SIGED_DATA.items():
+        if data["tdr"] == filename:
+            return {
+                "filename": filename,
+                "content": data["tdr_text"]
+            }
+    raise HTTPException(status_code=404, detail="Documento de TDR no encontrado en el servidor de archivos de SIGED")
+
+# --- Endpoints que la UI consume para consultar SIGED a través de nuestro Adapter ---
+@app.get("/siged/consultar/{numero}")
+def siged_consultar_expediente(numero: str):
+    adapter = SIGEDAdapter()
+    res = adapter.consultar_expediente(numero)
+    if res:
+        return {"success": True, "data": res}
+    raise HTTPException(status_code=404, detail="Expediente no encontrado en SIGED")
+
+@app.get("/siged/descargar/{filename}")
+def siged_descargar_tdr(filename: str):
+    adapter = SIGEDAdapter()
+    content = adapter.descargar_tdr(filename)
+    if content:
+        return {"success": True, "content": content}
+    raise HTTPException(status_code=404, detail="No se pudo descargar el TDR desde SIGED")
 
 @app.post("/generate", response_model=GenerateResponse)
 async def generate_text(request: GenerateRequest):

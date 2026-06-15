@@ -18,7 +18,7 @@ def generate_docx_template(filename, title_text, is_abreviado=False):
     title_run = title.add_run(f"OSINERGMIN\nGERENCIA DE ADMINISTRACIÓN Y FINANZAS\n\n{tipo_bases}\n{title_text.upper()}")
     title_run.bold = True
     title_run.font.size = Pt(13)
-    title_run.font.color.rgb = RGBColor(12, 74, 110) # Azul Osinergmin (#0c4a6e)
+    title_run.font.color.rgb = RGBColor(0, 57, 170) # Azul Osinergmin (#0039aa)
     
     doc.add_paragraph("\n")
     
@@ -27,7 +27,7 @@ def generate_docx_template(filename, title_text, is_abreviado=False):
     h1_run = h1.add_run("CAPÍTULO I: DISPOSICIONES GENERALES Y DATOS DEL PROCESO")
     h1_run.bold = True
     h1_run.font.size = Pt(12)
-    h1_run.font.color.rgb = RGBColor(12, 74, 110)
+    h1_run.font.color.rgb = RGBColor(0, 57, 170)
     
     table_data = doc.add_table(rows=7, cols=2)
     table_data.style = 'Table Grid'
@@ -58,7 +58,7 @@ def generate_docx_template(filename, title_text, is_abreviado=False):
     h2_run = h2.add_run("CAPÍTULO II: CRONOGRAMA DEL PROCEDIMIENTO DE SELECCIÓN")
     h2_run.bold = True
     h2_run.font.size = Pt(12)
-    h2_run.font.color.rgb = RGBColor(12, 74, 110)
+    h2_run.font.color.rgb = RGBColor(0, 57, 170)
     
     table_cron = doc.add_table(rows=6, cols=2)
     table_cron.style = 'Table Grid'
@@ -88,7 +88,7 @@ def generate_docx_template(filename, title_text, is_abreviado=False):
     h3_run = h3.add_run("CAPÍTULO III: VALOR ESTIMADO Y CONDICIONES ECONÓMICAS")
     h3_run.bold = True
     h3_run.font.size = Pt(12)
-    h3_run.font.color.rgb = RGBColor(12, 74, 110)
+    h3_run.font.color.rgb = RGBColor(0, 57, 170)
     
     p_valor = doc.add_paragraph()
     p_valor.add_run("El valor estimado de la presente contratación asciende a la suma de ").font.size = Pt(11)
@@ -101,7 +101,7 @@ def generate_docx_template(filename, title_text, is_abreviado=False):
     h4_run = h4.add_run("CAPÍTULO IV: REQUERIMIENTOS TÉCNICOS MÍNIMOS (PLAZOS Y REQUISITOS)")
     h4_run.bold = True
     h4_run.font.size = Pt(12)
-    h4_run.font.color.rgb = RGBColor(12, 74, 110)
+    h4_run.font.color.rgb = RGBColor(0, 57, 170)
     
     p_plazo = doc.add_paragraph()
     p_plazo.add_run("Plazo de ejecución: ").bold = True
@@ -118,7 +118,7 @@ def generate_docx_template(filename, title_text, is_abreviado=False):
     h5_run = h5.add_run("CAPÍTULO V: FACTORES DE EVALUACIÓN")
     h5_run.bold = True
     h5_run.font.size = Pt(12)
-    h5_run.font.color.rgb = RGBColor(12, 74, 110)
+    h5_run.font.color.rgb = RGBColor(0, 57, 170)
     
     p_factores = doc.add_paragraph()
     p_factores.add_run("{{ factores_evaluacion }}")

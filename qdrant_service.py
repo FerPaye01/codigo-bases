@@ -2,8 +2,11 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 import os
 import time
+from dotenv import load_dotenv
 
-QDRANT_DB_PATH = "/data/proyectos/proyecto-bases/qdrant_db"
+load_dotenv()
+
+QDRANT_DB_PATH = os.getenv("QDRANT_DB_PATH", "qdrant_db")
 
 def get_qdrant_client():
     """Retorna el cliente local de Qdrant persistido en disco."""

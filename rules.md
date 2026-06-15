@@ -16,13 +16,16 @@ Este documento establece las reglas, estándares de codificación y directrices 
 
 ## 🎨 Estándares de Interfaz y Diseño (Streamlit)
 
-1.  **Paleta de Colores de Osinergmin**:
-    *   Azul Institucional Primario: `#0c4a6e` (para cabeceras `h1`, `h2`, `h3` y elementos principales).
-    *   Gris Oscuro / Slate: `#0f172a` (para el menú lateral / sidebar).
-    *   Acentos de Éxito / Alertas: Verde `#16a34a`, Ámbar `#d97706`, Rojo `#dc2626`.
+1.  **Paleta de Colores Oficial de Osinergmin (Manual de Identidad)**:
+    *   Azul Institucional Primario (Primary): `#0039aa` (para cabeceras `h1`, `h2`, `h3`, botones principales y elementos destacados).
+    *   Amarillo Corporativo (Accent): `#fbe122` (para destaques y acentos).
+    *   Gris Oscuro / Contraste (Surface): `#101828` (para el menú lateral / sidebar y fondos oscuros).
+    *   Superficies y Bordes Neutros: Gris Claro `#f2f2f2`, Celeste Claro `#d2f7fc` (para fondos de app y recuadros).
+    *   Acentos Complementarios: Naranja `#f6a229`, Verde `#35cc29`, Celeste `#03a9f4`.
 2.  **Estilos CSS Premium**:
-    *   Toda modificación en la UI debe inyectarse a través del bloque de estilos CSS definido en la parte superior de `app.py`.
-    *   Utiliza fuentes corporativas modernas como `Outfit` y `Plus Jakarta Sans`.
+    *   Toda modificación en la UI debe inyectarse a través del bloque de estilos CSS definido en la parte superior de `app.py` respetando estrictamente las variables `:root` definidas.
+    *   Utiliza de forma obligatoria la fuente institucional `'Poppins', sans-serif;`.
+    *   **Elemento Fijo (Línea de Identidad)**: Es obligatorio mantener la franja combinada "Azul y Amarilla" con un alto estándar de entre `21px` y `30px` en la cabecera principal y de menú lateral.
     *   Evita layouts desordenados. Usa tarjetas con bordes redondeados (`border-radius: 12px`), sombreados sutiles (`box-shadow`) y transiciones suaves (`transition: all 0.2s ease`).
 3.  **Integridad del Flujo Multipaso**:
     *   No rompas la navegación del asistente. Cualquier paso agregado o modificado debe estar integrado dentro del estado de sesión de Streamlit (`st.session_state.current_step`) y reflejarse correctamente en el indicador visual superior.
