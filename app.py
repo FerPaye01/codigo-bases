@@ -354,6 +354,13 @@ if "datos_tecnicos" not in st.session_state:
         "requisitos_calificacion": "",
         "factores_evaluacion": ""
     }
+for field in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
+    orig_key = f"orig_{field}"
+    hist_key = f"hist_{field}"
+    if orig_key not in st.session_state:
+        st.session_state[orig_key] = ""
+    if hist_key not in st.session_state:
+        st.session_state[hist_key] = []
 if "datos_tecnicos_confianza" not in st.session_state:
     st.session_state.datos_tecnicos_confianza = {
         "objeto": "Verde",
@@ -638,6 +645,9 @@ if st.session_state.current_step == 1:
                         "requisitos_calificacion": "\n".join(ext_data.get("requisitos_calificacion", [])),
                         "factores_evaluacion": "\n".join(ext_data.get("factores_evaluacion", [])) or "Factores de evaluación sugeridos: Certificación voluntaria adicional (20 pts), SLA mejorado (10 pts)."
                     }
+                    for f in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
+                        st.session_state[f"orig_{f}"] = st.session_state.datos_tecnicos[f]
+                        st.session_state[f"hist_{f}"] = [st.session_state.datos_tecnicos[f]]
                     
                     if ext_data.get("valor_estimado"):
                         st.session_state.valor_estimado = float(ext_data["valor_estimado"])
@@ -675,6 +685,9 @@ if st.session_state.current_step == 1:
                     st.session_state.plantilla_sugerida = db_state["plantilla_usada"]
                     st.session_state.plantilla_confirmada = True
                     st.session_state.datos_tecnicos = db_state["datos_extraidos"]
+                    for f in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
+                        st.session_state[f"orig_{f}"] = st.session_state.datos_tecnicos.get(f, "")
+                        st.session_state[f"hist_{f}"] = [st.session_state.datos_tecnicos.get(f, "")]
                     
                     # Cargar datos administrativos
                     admin = db_state["datos_administrativos"]
@@ -797,6 +810,9 @@ if st.session_state.current_step == 1:
                             "requisitos_calificacion": "\n".join(ext_data.get("requisitos_calificacion", [])),
                             "factores_evaluacion": "\n".join(ext_data.get("factores_evaluacion", [])) or "Factores de evaluación sugeridos: Certificación voluntaria adicional (20 pts), SLA mejorado (10 pts)."
                         }
+                        for f in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
+                            st.session_state[f"orig_{f}"] = st.session_state.datos_tecnicos[f]
+                            st.session_state[f"hist_{f}"] = [st.session_state.datos_tecnicos[f]]
                         
                         if ext_data.get("valor_estimado"):
                             st.session_state.valor_estimado = float(ext_data["valor_estimado"])
@@ -923,13 +939,60 @@ elif st.session_state.current_step == 3:
     with col_t1:
         st.markdown("#### Datos Extraídos")
         
-        # Formulario de campos técnicos editables
-        objeto_val = st.text_area("Objeto de la contratación (Obligatorio)", value=st.session_state.datos_tecnicos["objeto"], height=70)
-        plazo_val = st.text_input("Plazo de ejecución (Obligatorio)", value=st.session_state.datos_tecnicos["plazo"])
-        sistema_val = st.text_input("Sistema de contratación", value=st.session_state.datos_tecnicos["sistema_contratacion"])
-        req_completo_val = st.text_area("Requerimiento completo", value=st.session_state.datos_tecnicos["requerimiento_completo"], height=100)
-        reqs_calif_val = st.text_area("Requisitos de calificación", value=st.session_state.datos_tecnicos["requisitos_calificacion"], height=100)
-        factores_val = st.text_area("Factores de evaluación", value=st.session_state.datos_tecnicos["factores_evaluacion"], height=80)
+        # Helper to render editable technical fields with actions
+        def render_editable_field(label, field_name, is_area=True, height=70):
+            curr_val = st.session_state.datos_tecnicos.get(field_name, "")
+            orig_val = st.session_state.get(f"orig_{field_name}", "")
+            hist = st.session_state.get(f"hist_{field_name}", [])
+            
+            # Render input widget
+            if is_area:
+                val = st.text_area(label, value=curr_val, height=height, key=f"input_{field_name}")
+            else:
+                val = st.text_input(label, value=curr_val, key=f"input_{field_name}")
+                
+            col_act1, col_act2, col_act3 = st.columns([1, 1, 1])
+            with col_act1:
+                if st.button("🔄 Restaurar original", key=f"btn_orig_{field_name}", use_container_width=True, help="Restaurar al valor extraído originalmente por la IA"):
+                    st.session_state.datos_tecnicos[field_name] = orig_val
+                    st.session_state[f"input_{field_name}"] = orig_val
+                    if not hist or hist[-1] != orig_val:
+                        st.session_state[f"hist_{field_name}"].append(orig_val)
+                    st.success("✓ Original restaurado")
+                    time.sleep(0.4)
+                    st.rerun()
+            with col_act2:
+                has_history = len(hist) > 1
+                if st.button("↩️ Deshacer", key=f"btn_undo_{field_name}", use_container_width=True, disabled=not has_history, help="Deshacer el último cambio"):
+                    hist.pop() # remove current
+                    prev_val = hist[-1]
+                    st.session_state.datos_tecnicos[field_name] = prev_val
+                    st.session_state[f"input_{field_name}"] = prev_val
+                    st.success("✓ Cambio deshecho")
+                    time.sleep(0.4)
+                    st.rerun()
+            with col_act3:
+                has_changed = val != curr_val
+                if st.button("💾 Aplicar cambio", key=f"btn_apply_{field_name}", use_container_width=True, type="primary" if has_changed else "secondary", help="Aplicar cambios y actualizar visor"):
+                    st.session_state.datos_tecnicos[field_name] = val
+                    if not hist or hist[-1] != val:
+                        st.session_state[f"hist_{field_name}"].append(val)
+                    st.success("✓ Cambio aplicado")
+                    time.sleep(0.4)
+                    st.rerun()
+                    
+            if has_changed:
+                st.markdown("<small style='color: #d97706;'>⚠️ Tiene cambios sin aplicar en este campo. Pulse 'Aplicar cambio' (o presione Enter) para actualizar el visor del TDR.</small>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+            return val
+
+        # Renderizar cada campo usando el helper
+        objeto_val = render_editable_field("Objeto de la contratación (Obligatorio)", "objeto", is_area=True, height=70)
+        plazo_val = render_editable_field("Plazo de ejecución (Obligatorio)", "plazo", is_area=False)
+        sistema_val = render_editable_field("Sistema de contratación", "sistema_contratacion", is_area=False)
+        req_completo_val = render_editable_field("Requerimiento completo", "requerimiento_completo", is_area=True, height=100)
+        reqs_calif_val = render_editable_field("Requisitos de calificación", "requisitos_calificacion", is_area=True, height=100)
+        factores_val = render_editable_field("Factores de evaluación", "factores_evaluacion", is_area=True, height=80)
         
         # Calcular confianza dinámicamente según el contenido real
         def get_conf_class(text):
@@ -986,7 +1049,7 @@ elif st.session_state.current_step == 3:
                             else:
                                 st.error(f"Error al conectar con la base de vectores: {resp.text}")
                         except Exception as ex:
-                            st.error(f"No se pudo contactar al API de vectores: {ex}")
+                             st.error(f"No se pudo contactar al API de vectores: {ex}")
             
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -994,29 +1057,22 @@ elif st.session_state.current_step == 3:
         col_btn_t1, col_btn_t2 = st.columns(2)
         with col_btn_t1:
             if st.button("Guardar y salir", use_container_width=True):
-                st.session_state.datos_tecnicos = {
-                    "objeto": objeto_val,
-                    "plazo": plazo_val,
-                    "sistema_contratacion": sistema_val,
-                    "requerimiento_completo": req_completo_val,
-                    "requisitos_calificacion": reqs_calif_val,
-                    "factores_evaluacion": factores_val
-                }
+                for field in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
+                    widget_val = st.session_state.get(f"input_{field}")
+                    if widget_val is not None:
+                        st.session_state.datos_tecnicos[field] = widget_val
                 st.session_state.current_step = 6 # Volver al historial
                 st.rerun()
         with col_btn_t2:
             if st.button("Confirmar datos técnicos ➡️", use_container_width=True):
-                if not objeto_val or not plazo_val:
+                # Aplicar cualquier cambio pendiente del widget
+                for field in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
+                    widget_val = st.session_state.get(f"input_{field}")
+                    if widget_val is not None:
+                        st.session_state.datos_tecnicos[field] = widget_val
+                if not st.session_state.datos_tecnicos["objeto"] or not st.session_state.datos_tecnicos["plazo"]:
                     st.markdown('<div class="error-panel">Debe completar los campos obligatorios antes de continuar (Objeto y Plazo).</div>', unsafe_allow_html=True)
                 else:
-                    st.session_state.datos_tecnicos = {
-                        "objeto": objeto_val,
-                        "plazo": plazo_val,
-                        "sistema_contratacion": sistema_val,
-                        "requerimiento_completo": req_completo_val,
-                        "requisitos_calificacion": reqs_calif_val,
-                        "factores_evaluacion": factores_val
-                    }
                     st.session_state.datos_tecnicos_confirmados = True
                     st.session_state.current_step = 4
                     st.rerun()
@@ -1032,13 +1088,56 @@ elif st.session_state.current_step == 3:
             tdr_text = st.session_state.tdr_markdown_extraido
         else:
             tdr_text = MOCK_TDRS.get(st.session_state.expediente_input, MOCK_TDRS["20260000982"])
-        # Resaltado de búsqueda simulado
-        if search_query:
-            tdr_display = tdr_text.replace(search_query, f"⚡[{search_query.upper()}]⚡")
-        else:
-            tdr_display = tdr_text
             
-        st.markdown(f'<div class="tdr-viewer"><pre style="color:#101828; white-space: pre-wrap;">{tdr_display}</pre></div>', unsafe_allow_html=True)
+        # Reemplazar cambios dinámicamente en el visor del TDR
+        tdr_display = tdr_text
+        
+        # Escapar caracteres HTML básicos
+        tdr_display = tdr_display.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        
+        # Reemplazar campos modificados con estilos web inyectados
+        for field in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
+            orig = st.session_state.get(f"orig_{field}", "")
+            curr = st.session_state.datos_tecnicos.get(field, "")
+            
+            if orig:
+                orig_escaped = orig.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            else:
+                orig_escaped = ""
+                
+            if curr:
+                curr_escaped = curr.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            else:
+                curr_escaped = ""
+                
+            if orig_escaped and curr_escaped and orig_escaped != curr_escaped:
+                # Si es un campo largo, usamos bloque
+                if field in ["objeto", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"] or "\n" in orig_escaped:
+                    replacement = (
+                        f"<div style='background-color: #eff6ff; border-left: 4px solid #3b82f6; "
+                        f"padding: 8px; border-radius: 4px; display: block; margin: 8px 0; color: #1e3a8a; font-family: sans-serif; font-size: 0.9rem; line-height: 1.4;'>"
+                        f"<b>📄 Original del TDR:</b><br><span style='color: #475569; font-style: italic; white-space: pre-wrap;'>{orig_escaped}</span><br>"
+                        f"<b>✍️ Modificado a:</b><br><span style='font-weight: 500; white-space: pre-wrap;'>{curr_escaped}</span>"
+                        f"</div>"
+                    )
+                else:
+                    # Si es corto (plazo, sistema), inline
+                    replacement = (
+                        f"<span style='background-color: #fef08a; border: 1px solid #eab308; "
+                        f"padding: 2px 6px; border-radius: 4px; display: inline-block; font-weight: bold; color: #854d0e; font-family: sans-serif; font-size: 0.9rem;'>"
+                        f"<s>{orig_escaped}</s> ➡️ {curr_escaped}"
+                        f"</span>"
+                    )
+                
+                # Intentar reemplazar en el visor
+                if orig_escaped in tdr_display:
+                    tdr_display = tdr_display.replace(orig_escaped, replacement)
+        
+        # Búsqueda resaltada si el usuario buscó algo
+        if search_query:
+            tdr_display = tdr_display.replace(search_query, f"<span style='background-color: #fed7aa; border-bottom: 2px solid #ea580c; font-weight: bold; color: #7c2d12;'>{search_query}</span>")
+            
+        st.markdown(f'<div class="tdr-viewer" style="color:#101828; white-space: pre-wrap; font-family: monospace; background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #cbd5e1; height: 600px; overflow-y: auto; line-height: 1.5;">{tdr_display}</div>', unsafe_allow_html=True)
 
 # ==============================================================================
 # PANTALLA 4: INGRESO DE DATOS ADMINISTRATIVOS
@@ -1484,6 +1583,9 @@ elif st.session_state.current_step == 6:
                             st.session_state.plantilla_sugerida = db_state["plantilla_usada"]
                             st.session_state.plantilla_confirmada = True
                             st.session_state.datos_tecnicos = db_state["datos_extraidos"]
+                            for f in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
+                                st.session_state[f"orig_{f}"] = st.session_state.datos_tecnicos.get(f, "")
+                                st.session_state[f"hist_{f}"] = [st.session_state.datos_tecnicos.get(f, "")]
                             
                             # Cargar datos administrativos
                             admin = db_state["datos_administrativos"]
