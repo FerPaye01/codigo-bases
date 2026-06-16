@@ -17,6 +17,7 @@ El proyecto está construido sobre **Python** con un conjunto de librerías mode
 | **LLM Local** | Ollama + Gemma 3 1B | ✅ Activo (testing) |
 | **Backend API** | FastAPI | ✅ Activo |
 | **Base de Datos** | SQLite (PostgreSQL en prod) | ✅ Activo (persistencia relacional) |
+| **Vector DB** | Qdrant | ✅ Activo (embebido local con fastembed) |
 | **Motor Plantillas** | docxtpl + python-docx | ✅ Activo |
 | **OCR / Layout** | IBM Docling | ✅ Activo |
 | **NLP** | spaCy + reglas + Pydantic + LLM | ✅ Activo |
@@ -71,7 +72,7 @@ El proyecto está construido sobre **Python** con un conjunto de librerías mode
 ┌────────────────────▼────────────────────────────────────┐
 │              CAPA DE DATOS                               │
 │  ┌──────────────────┐  ┌──────────────────┐              │
-│  │  PostgreSQL 16   │  │  Qdrant          │              │
+│  │  SQLite (Local)  │  │  Qdrant (Local)  │              │
 │  │  - expedientes   │  │  - vectores      │              │
 │  │  - procesos      │  │  - búsqueda      │              │
 │  │  - auditoría     │  │    semántica     │              │
@@ -140,17 +141,15 @@ source venv/bin/activate  # Linux/macOS
 
 ### 3. Dependencias
 
+Instalación de las dependencias principales del MVP (incluyendo FastAPI, motor de OCR local, base de datos vectorial y motor de plantillas):
 ```bash
-pip install streamlit pandas ollama mcp fastmcp rich pydantic
+pip install streamlit pandas ollama mcp fastmcp rich pydantic fastapi uvicorn docling qdrant-client fastembed python-docx docxtpl requests
 ```
 
-Dependencias futuras (cuando se implementen):
+Dependencias de Producción (a futuro):
 ```bash
-# PostgreSQL / Qdrant
-pip install psycopg2-binary qdrant-client sqlalchemy
-
-# NLP / OCR
-pip install spacy paddleocr docxtpl python-docx
+# PostgreSQL
+pip install psycopg2-binary sqlalchemy
 
 # IAM
 # Keycloak OIDC client (a integrar)
@@ -169,7 +168,10 @@ ollama pull gemma3:1b
 | Comando | Descripción |
 |---------|------------|
 | `streamlit run app.py` | Levantar portal web (Streamlit) |
+| `uvicorn api:app --reload` | Levantar API backend (FastAPI) en puerto 8000 |
 | `python MCP/server.py` | Iniciar servidor MCP en modo SSE |
+| `python create_template.py` | Generar los 6 archivos de plantilla Word (.docx) |
+| `python tests/test_api_new.py` | Ejecutar pruebas de la API y auditoría de base de datos |
 | `python LLM/ollama_gemma3_demo.py` | Demo de extracción estructurada con Gemma 3 |
 | `python LLM/ollama_mcp_client.py` | Cliente de demostración MCP |
 

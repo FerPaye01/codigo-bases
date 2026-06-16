@@ -377,8 +377,8 @@ if "valor_estimado" not in st.session_state:
     st.session_state.valor_estimado = 0.0
 if "moneda" not in st.session_state:
     st.session_state.moneda = "Soles (S/.)"
-if "fuente_valor" not in st.session_state:
-    st.session_state.fuente_valor = "Estudio de Mercado"
+if "fuente_val" not in st.session_state:
+    st.session_state.fuente_val = "Estudio de Mercado"
 if "unidad_solicitante" not in st.session_state:
     st.session_state.unidad_solicitante = "GSTI"
 if "responsable" not in st.session_state:
@@ -1358,7 +1358,7 @@ elif st.session_state.current_step == 5:
                 "numero_proceso": st.session_state.numero_proceso,
                 "valor_estimado": float(st.session_state.valor_estimado),
                 "moneda": st.session_state.moneda,
-                "fuente_val": st.session_state.fuente_valor,
+                "fuente_val": st.session_state.fuente_val,
                 "unidad_solicitante": st.session_state.unidad_solicitante,
                 "responsable": st.session_state.responsable,
                 "fecha_convocatoria": f_conv_str,

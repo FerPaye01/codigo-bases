@@ -29,6 +29,11 @@ Este documento establece las reglas, estándares de codificación y directrices 
     *   Evita layouts desordenados. Usa tarjetas con bordes redondeados (`border-radius: 12px`), sombreados sutiles (`box-shadow`) y transiciones suaves (`transition: all 0.2s ease`).
 3.  **Integridad del Flujo Multipaso**:
     *   No rompas la navegación del asistente. Cualquier paso agregado o modificado debe estar integrado dentro del estado de sesión de Streamlit (`st.session_state.current_step`) y reflejarse correctamente en el indicador visual superior.
+4.  **Indicador de Progreso Multipaso y Guía Lateral**:
+    *   Mantén visible el componente visual de pasos `render_step_indicator` en todas las pantallas principales.
+    *   Mantén y actualiza la guía de ayuda rápida y glosario en la barra lateral (`st.sidebar`) para asegurar el entendimiento y usabilidad.
+5.  **Semáforos de Confianza Dinámicos**:
+    *   Los indicadores de confianza en la extracción (Verde, Naranja, Rojo) deben calcularse en tiempo real sobre el contenido actual de los campos de texto usando `get_conf_class()`. No utilices valores estáticos.
 
 ---
 
@@ -43,6 +48,10 @@ Este documento establece las reglas, estándares de codificación y directrices 
     *   Al trabajar con llamadas a LLM (Ollama o servicios Cloud), define siempre modelos estructurados mediante **Pydantic** para garantizar respuestas consistentes.
     *   Separa claramente el Prompt de sistema del contenido del usuario.
     *   Incluye manejo de excepciones y fallas (fallbacks) en las llamadas a APIs de lenguaje para evitar caídas completas del asistente.
+4.  **Trazabilidad y Seguridad (RNF-1)**:
+    *   Todos los endpoints de la API backend que realicen extracción de datos, generación de documentos o consultas semánticas RAG deben invocar a `database.log_audit_action(...)` para registrar las acciones del usuario.
+5.  **Resolución de Plantillas Dinámicas (RF-2)**:
+    *   El servicio de generación de Word en `/generate_docx` debe recibir el identificador de la plantilla seleccionada por el usuario y resolver dinámicamente el archivo correspondiente a las 6 variantes oficiales (`plantilla_bienes_normal.docx`, etc.) con fallback seguro a la plantilla base.
 
 ---
 
