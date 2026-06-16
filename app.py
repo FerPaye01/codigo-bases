@@ -357,10 +357,13 @@ if "datos_tecnicos" not in st.session_state:
 for field in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
     orig_key = f"orig_{field}"
     hist_key = f"hist_{field}"
+    input_key = f"input_{field}"
     if orig_key not in st.session_state:
         st.session_state[orig_key] = ""
     if hist_key not in st.session_state:
         st.session_state[hist_key] = []
+    if input_key not in st.session_state:
+        st.session_state[input_key] = ""
 if "datos_tecnicos_confianza" not in st.session_state:
     st.session_state.datos_tecnicos_confianza = {
         "objeto": "Verde",
@@ -648,6 +651,7 @@ if st.session_state.current_step == 1:
                     for f in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
                         st.session_state[f"orig_{f}"] = st.session_state.datos_tecnicos[f]
                         st.session_state[f"hist_{f}"] = [st.session_state.datos_tecnicos[f]]
+                        st.session_state[f"input_{f}"] = st.session_state.datos_tecnicos[f]
                     
                     if ext_data.get("valor_estimado"):
                         st.session_state.valor_estimado = float(ext_data["valor_estimado"])
@@ -688,6 +692,7 @@ if st.session_state.current_step == 1:
                     for f in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
                         st.session_state[f"orig_{f}"] = st.session_state.datos_tecnicos.get(f, "")
                         st.session_state[f"hist_{f}"] = [st.session_state.datos_tecnicos.get(f, "")]
+                        st.session_state[f"input_{f}"] = st.session_state.datos_tecnicos.get(f, "")
                     
                     # Cargar datos administrativos
                     admin = db_state["datos_administrativos"]
@@ -813,6 +818,7 @@ if st.session_state.current_step == 1:
                         for f in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
                             st.session_state[f"orig_{f}"] = st.session_state.datos_tecnicos[f]
                             st.session_state[f"hist_{f}"] = [st.session_state.datos_tecnicos[f]]
+                            st.session_state[f"input_{f}"] = st.session_state.datos_tecnicos[f]
                         
                         if ext_data.get("valor_estimado"):
                             st.session_state.valor_estimado = float(ext_data["valor_estimado"])
@@ -1586,6 +1592,7 @@ elif st.session_state.current_step == 6:
                             for f in ["objeto", "plazo", "sistema_contratacion", "requerimiento_completo", "requisitos_calificacion", "factores_evaluacion"]:
                                 st.session_state[f"orig_{f}"] = st.session_state.datos_tecnicos.get(f, "")
                                 st.session_state[f"hist_{f}"] = [st.session_state.datos_tecnicos.get(f, "")]
+                                st.session_state[f"input_{f}"] = st.session_state.datos_tecnicos.get(f, "")
                             
                             # Cargar datos administrativos
                             admin = db_state["datos_administrativos"]
