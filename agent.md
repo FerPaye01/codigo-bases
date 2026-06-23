@@ -15,12 +15,11 @@ El proyecto está construido sobre **Python** con un conjunto de librerías mode
 | **Frontend MVP** | Streamlit | ✅ Activo |
 | **Frontend Producción** | Angular 21 | 🔮 Futuro |
 | **LLM Local** | Ollama + Gemma 3 1B | ✅ Activo (testing) |
-| **Backend API** | FastAPI | ✅ Activo |
-| **Base de Datos** | SQLite (PostgreSQL en prod) | ✅ Activo (persistencia relacional) |
-| **Vector DB** | Qdrant | ✅ Activo (embebido local con fastembed) |
-| **Motor Plantillas** | docxtpl + python-docx | ✅ Activo |
-| **OCR / Layout** | IBM Docling | ✅ Activo |
-| **NLP** | spaCy + reglas + Pydantic + LLM | ✅ Activo |
+| **Backend API** | FastAPI | ⚠️ Por implementar |
+| **Base de Datos** | PostgreSQL 16 + Qdrant | ⚠️ Por implementar |
+| **Motor Plantillas** | docxtpl + python-docx | ⚠️ Por implementar |
+| **OCR** | PaddleOCR | 🔮 Futuro |
+| **NLP** | spaCy + reglas + Pydantic + LLM | ⚠️ Por implementar |
 | **IAM** | Keycloak (config lista) | 📦 Preparado |
 | **SIGED** | Mock + patrón Adapter | ✅ Mock activo |
 | **Protocolo IA** | FastMCP (MCP Server SSE) | ✅ Activo |
@@ -72,7 +71,7 @@ El proyecto está construido sobre **Python** con un conjunto de librerías mode
 ┌────────────────────▼────────────────────────────────────┐
 │              CAPA DE DATOS                               │
 │  ┌──────────────────┐  ┌──────────────────┐              │
-│  │  SQLite (Local)  │  │  Qdrant (Local)  │              │
+│  │  PostgreSQL 16   │  │  Qdrant          │              │
 │  │  - expedientes   │  │  - vectores      │              │
 │  │  - procesos      │  │  - búsqueda      │              │
 │  │  - auditoría     │  │    semántica     │              │
@@ -92,15 +91,15 @@ El proyecto está construido sobre **Python** con un conjunto de librerías mode
 | 1 | Ingreso de expediente SIGED + selección de plantilla (Bienes/Servicios/Consultoría) | ✅ |
 | 2 | Validación del expediente (Mock) | ✅ |
 | 3 | Identificación y descarga del TDR digital | ✅ |
-| 4 | Extracción con OCR/NLP de datos del TDR | ✅ |
+| 4 | Extracción con OCR/NLP de datos del TDR | ⚠️ |
 | 5 | Visualización y corrección de datos técnicos extraídos | ✅ |
 | 6 | Ingreso/Modificación de datos administrativos | ✅ |
 | 7 | Configuración del cronograma de licitación | ✅ |
-| 8 | Generación dinámica del borrador .docx | ✅ |
-| 9 | Ajuste del documento según matrices de mapeo | ✅ |
+| 8 | Generación dinámica del borrador .docx | ⚠️ |
+| 9 | Ajuste del documento según matrices de mapeo | ⚠️ |
 | 10 | Revisión humana (checklist de validaciones) | ✅ |
-| 11 | Descarga del borrador final en .docx | ✅ |
-| 12 | Guardado en historial de expedientes | ✅ |
+| 11 | Descarga del borrador final en .docx | ⚠️ |
+| 12 | Guardado en historial de expedientes | ⚠️ |
 
 ---
 
@@ -141,15 +140,17 @@ source venv/bin/activate  # Linux/macOS
 
 ### 3. Dependencias
 
-Instalación de las dependencias principales del MVP (incluyendo FastAPI, motor de OCR local, base de datos vectorial y motor de plantillas):
 ```bash
-pip install streamlit pandas ollama mcp fastmcp rich pydantic fastapi uvicorn docling qdrant-client fastembed python-docx docxtpl requests
+pip install streamlit pandas ollama mcp fastmcp rich pydantic
 ```
 
-Dependencias de Producción (a futuro):
+Dependencias futuras (cuando se implementen):
 ```bash
-# PostgreSQL
-pip install psycopg2-binary sqlalchemy
+# PostgreSQL / Qdrant
+pip install psycopg2-binary qdrant-client sqlalchemy
+
+# NLP / OCR
+pip install spacy paddleocr docxtpl python-docx
 
 # IAM
 # Keycloak OIDC client (a integrar)
@@ -168,10 +169,7 @@ ollama pull gemma3:1b
 | Comando | Descripción |
 |---------|------------|
 | `streamlit run app.py` | Levantar portal web (Streamlit) |
-| `uvicorn api:app --reload` | Levantar API backend (FastAPI) en puerto 8000 |
 | `python MCP/server.py` | Iniciar servidor MCP en modo SSE |
-| `python create_template.py` | Generar los 6 archivos de plantilla Word (.docx) |
-| `python tests/test_api_new.py` | Ejecutar pruebas de la API y auditoría de base de datos |
 | `python LLM/ollama_gemma3_demo.py` | Demo de extracción estructurada con Gemma 3 |
 | `python LLM/ollama_mcp_client.py` | Cliente de demostración MCP |
 
@@ -202,3 +200,4 @@ ollama pull gemma3:1b
       • Bitácora del servicio: task-227.log    
 
       uvicorn api:app --host 127.0.0.1 --port 8000 --reload
+      

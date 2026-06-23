@@ -1,0 +1,2 @@
+qdrant-client
+fast_embed
